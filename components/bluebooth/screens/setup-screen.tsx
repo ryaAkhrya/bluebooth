@@ -3,6 +3,7 @@
 import { ArrowRight, Camera, Grid2X2, Image, RotateCcw, Timer } from 'lucide-react'
 import { useEffect } from 'react'
 import { CameraControls } from '@/components/bluebooth/editor/camera-controls'
+import { ConnectionStatus } from '@/components/bluebooth/camera/connection-status'
 import { CompositionPreview } from '@/components/bluebooth/editor/composition-preview'
 import { FrameSelector } from '@/components/bluebooth/editor/frame-selector'
 import { GridSelector } from '@/components/bluebooth/editor/grid-selector'
@@ -12,6 +13,7 @@ import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
 import { useLocalMedia } from '@/components/bluebooth/state/local-media'
 import { useRoom } from '@/components/bluebooth/state/room-state'
 import type { CameraStatus, SetupStep } from '@/types/bluebooth'
+import type { WebRtcConnectionState } from '@/types/webrtc'
 
 const steps: Array<{ id: SetupStep; label: string; icon: typeof Grid2X2 }> = [
   { id: 'layout', label: 'Layout', icon: Grid2X2 },
@@ -25,12 +27,18 @@ export function SetupScreen({
   cameraStatus,
   devices,
   deviceId,
+  remoteStream,
+  peerConnectionState,
+  onRetryPeer,
   onRequestCamera,
 }: {
   stream: MediaStream | null
   cameraStatus: CameraStatus
   devices: MediaDeviceInfo[]
   deviceId: string
+  remoteStream: MediaStream | null
+  peerConnectionState: WebRtcConnectionState
+  onRetryPeer: () => void
   onRequestCamera: (deviceId?: string) => Promise<void>
 }) {
   const { state, dispatch } = useBluebooth()
@@ -58,12 +66,19 @@ export function SetupScreen({
         <aside className="bb-preview-panel">
           <div className="bb-preview-toolbar">
             <strong>Live preview</strong>
+            {room.mode === 'online' && (
+              <ConnectionStatus
+                state={peerConnectionState}
+                onRetry={onRetryPeer}
+                compact
+              />
+            )}
             <div className="bb-segmented" aria-label="Camera source mode">
               {(['user', 'partner', 'split', 'alternate'] as const).map((mode) => <button key={mode} className={state.cameraMode === mode ? 'is-active' : ''} onClick={() => dispatch({ type: 'set-camera-mode', mode })}>{mode === 'user' ? 'You' : mode[0].toUpperCase() + mode.slice(1)}</button>)}
             </div>
             <button className="bb-icon-button" aria-label="Swap camera positions" onClick={() => dispatch({ type: 'toggle-swap' })}><RotateCcw /></button>
           </div>
-          <CompositionPreview stream={stream} />
+          <CompositionPreview stream={stream} remoteStream={remoteStream} />
         </aside>
         <section className="bb-editor-panel">
           {state.setupStep === 'layout' && <><header><h2>Choose a grid</h2><p>Pick a format, then adjust its spacing.</p></header><GridSelector /><div className="bb-control-card"><LayoutControls /></div></>}

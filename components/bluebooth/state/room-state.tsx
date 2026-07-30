@@ -42,6 +42,7 @@ import type {
   RoomPresenceStage,
   RoomSettingsEvent,
 } from '@/types/room'
+import type { WebRtcSignal } from '@/types/webrtc'
 
 type RoomOperationStatus = 'idle' | 'loading' | 'error'
 type SettingsStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -75,6 +76,8 @@ interface RoomContextValue {
     stage?: RoomPresenceStage
     cameraReady?: boolean
   }) => void
+  sendWebRtcSignal: (signal: WebRtcSignal) => Promise<boolean>
+  subscribeWebRtcSignals: (listener: (signal: WebRtcSignal) => void) => () => void
 }
 
 const RoomContext = createContext<RoomContextValue | null>(null)
@@ -115,6 +118,7 @@ export function RoomProvider({
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lifecycleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const syncQueueRef = useRef(Promise.resolve())
+  const signalListenersRef = useRef(new Set<(signal: WebRtcSignal) => void>())
 
   useEffect(() => {
     roomRef.current = onlineRoom
@@ -239,6 +243,22 @@ export function RoomProvider({
     [dispatch, refreshRoom],
   )
 
+  const handleWebRtcSignal = useCallback((signal: WebRtcSignal) => {
+    const current = roomRef.current
+    if (
+      !current ||
+      signal.roomId !== current.room.id ||
+      signal.targetUserId !== current.membership.user_id ||
+      signal.senderUserId === current.membership.user_id ||
+      !current.members.some(
+        (member) => member.user_id === signal.senderUserId && member.left_at === null,
+      )
+    ) {
+      return
+    }
+    for (const listener of signalListenersRef.current) listener(signal)
+  }, [])
+
   const membership = onlineRoom?.membership
   const currentPresence = useMemo<RoomPresence | null>(() => {
     if (!membership) return null
@@ -258,6 +278,7 @@ export function RoomProvider({
     updatePresence,
     sendSettings,
     sendLifecycle,
+    sendWebRtcSignal: sendChannelWebRtcSignal,
     disconnect,
   } = useRoomChannel({
     client,
@@ -265,6 +286,7 @@ export function RoomProvider({
     initialPresence: currentPresence,
     onSettings: handleSettingsEvent,
     onLifecycle: handleLifecycleEvent,
+    onWebRtcSignal: handleWebRtcSignal,
     onReconnect: refreshRoom,
   })
 
@@ -566,6 +588,7 @@ export function RoomProvider({
     setLocalRoomActive(false)
     setOperationStatus('idle')
     setSettingsStatus('idle')
+    signalListenersRef.current.clear()
     dispatch({ type: 'reset-room' })
   }, [client, disconnect, dispatch, sendLifecycle])
 
@@ -576,10 +599,37 @@ export function RoomProvider({
     [],
   )
 
+  const sendWebRtcSignal = useCallback(
+    async (signal: WebRtcSignal) => {
+      const current = roomRef.current
+      if (
+        !current ||
+        signal.roomId !== current.room.id ||
+        signal.senderUserId !== current.membership.user_id ||
+        !current.members.some(
+          (member) => member.user_id === signal.targetUserId && member.left_at === null,
+        )
+      ) {
+        return false
+      }
+      return sendChannelWebRtcSignal(signal)
+    },
+    [sendChannelWebRtcSignal],
+  )
+
+  const subscribeWebRtcSignals = useCallback(
+    (listener: (signal: WebRtcSignal) => void) => {
+      signalListenersRef.current.add(listener)
+      return () => signalListenersRef.current.delete(listener)
+    },
+    [],
+  )
+
   useEffect(
     () => () => {
       if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
       if (lifecycleTimerRef.current) clearTimeout(lifecycleTimerRef.current)
+      signalListenersRef.current.clear()
     },
     [],
   )
@@ -600,6 +650,8 @@ export function RoomProvider({
       updateSharedSettings,
       retrySettings,
       setPresence,
+      sendWebRtcSignal,
+      subscribeWebRtcSignals,
     }),
     [
       authorizedPresence,
@@ -614,7 +666,9 @@ export function RoomProvider({
       operationStatus,
       retrySettings,
       setPresence,
+      sendWebRtcSignal,
       settingsStatus,
+      subscribeWebRtcSignals,
       updateSharedSettings,
     ],
   )

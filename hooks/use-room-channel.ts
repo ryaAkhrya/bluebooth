@@ -7,6 +7,7 @@ import {
   isRoomLifecycleEvent,
   isRoomSettingsEvent,
 } from '@/lib/supabase/realtime'
+import { WEBRTC_SIGNAL_TYPES, isWebRtcSignal } from '@/lib/bluebooth/webrtc'
 import type { Database } from '@/types/database'
 import type {
   RoomConnectionStatus,
@@ -14,6 +15,7 @@ import type {
   RoomPresence,
   RoomSettingsEvent,
 } from '@/types/room'
+import type { WebRtcSignal } from '@/types/webrtc'
 
 interface UseRoomChannelInput {
   client: SupabaseClient<Database> | null
@@ -21,6 +23,7 @@ interface UseRoomChannelInput {
   initialPresence: RoomPresence | null
   onSettings: (event: RoomSettingsEvent) => void
   onLifecycle: (event: RoomLifecycleEvent) => void
+  onWebRtcSignal: (signal: WebRtcSignal) => void
   onReconnect: () => void
 }
 
@@ -30,6 +33,7 @@ export function useRoomChannel({
   initialPresence,
   onSettings,
   onLifecycle,
+  onWebRtcSignal,
   onReconnect,
 }: UseRoomChannelInput) {
   const [connection, setConnection] = useState<RoomConnectionStatus>('offline')
@@ -37,12 +41,22 @@ export function useRoomChannel({
   const channelRef = useRef<RealtimeChannel | null>(null)
   const connectedRef = useRef(false)
   const presenceRef = useRef(initialPresence)
-  const callbacksRef = useRef({ onSettings, onLifecycle, onReconnect })
+  const callbacksRef = useRef({
+    onSettings,
+    onLifecycle,
+    onWebRtcSignal,
+    onReconnect,
+  })
   const presenceUserId = initialPresence?.userId ?? null
 
   useEffect(() => {
-    callbacksRef.current = { onSettings, onLifecycle, onReconnect }
-  }, [onLifecycle, onReconnect, onSettings])
+    callbacksRef.current = {
+      onSettings,
+      onLifecycle,
+      onWebRtcSignal,
+      onReconnect,
+    }
+  }, [onLifecycle, onReconnect, onSettings, onWebRtcSignal])
 
   useEffect(() => {
     presenceRef.current = initialPresence
@@ -103,6 +117,14 @@ export function useRoomChannel({
           callbacksRef.current.onLifecycle(message.payload)
         }
       })
+
+    for (const event of WEBRTC_SIGNAL_TYPES) {
+      channel.on('broadcast', { event }, (message) => {
+        if (isWebRtcSignal(message.payload) && message.payload.type === event) {
+          callbacksRef.current.onWebRtcSignal(message.payload)
+        }
+      })
+    }
 
     void client.realtime
       .setAuth()
@@ -173,12 +195,25 @@ export function useRoomChannel({
     )
   }, [])
 
+  const sendWebRtcSignal = useCallback(async (signal: WebRtcSignal) => {
+    const channel = channelRef.current
+    if (!channel || !connectedRef.current) return false
+    return (
+      (await channel.send({
+        type: 'broadcast',
+        event: signal.type,
+        payload: signal,
+      })) === 'ok'
+    )
+  }, [])
+
   return {
     connection: roomId ? connection : 'offline',
     presence: roomId ? presence : [],
     updatePresence,
     sendSettings,
     sendLifecycle,
+    sendWebRtcSignal,
     disconnect,
   }
 }

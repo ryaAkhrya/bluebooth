@@ -3,18 +3,26 @@
 import { ArrowRight, Check, Copy, UserRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { CameraVideo } from '@/components/bluebooth/camera/camera-video'
+import { ConnectionStatus } from '@/components/bluebooth/camera/connection-status'
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
 import { useRoom } from '@/components/bluebooth/state/room-state'
 import { useToast } from '@/components/bluebooth/ui/toast-provider'
 import type { CameraStatus } from '@/types/bluebooth'
+import type { WebRtcConnectionState } from '@/types/webrtc'
 
 export function WaitingRoomScreen({
   stream,
   cameraStatus,
+  remoteStream,
+  peerConnectionState,
+  onRetryPeer,
   onStartCamera,
 }: {
   stream: MediaStream | null
   cameraStatus: CameraStatus
+  remoteStream: MediaStream | null
+  peerConnectionState: WebRtcConnectionState
+  onRetryPeer: () => void
   onStartCamera: () => Promise<void>
 }) {
   const { state, dispatch } = useBluebooth()
@@ -89,11 +97,20 @@ export function WaitingRoomScreen({
         </article>
         <article className="bb-participant-card">
           <div className="bb-participant-camera">
-            {partnerOnline ? <div className="bb-demo-feed"><span>Partner online</span></div> : <div className="bb-camera-placeholder"><UserRound /><span>Waiting for partner</span></div>}
+            {remoteStream ? (
+              <CameraVideo stream={remoteStream} className="bb-remote-video" />
+            ) : partnerOnline ? (
+              <div className="bb-camera-placeholder"><UserRound /><span>Connecting partner camera</span></div>
+            ) : (
+              <div className="bb-camera-placeholder"><UserRound /><span>Waiting for partner</span></div>
+            )}
           </div>
           <div><strong>{partnerName ?? 'Partner'}</strong><span className={partnerOnline ? 'is-online' : ''}>{partnerOnline ? 'Connected' : partner ? 'Offline' : 'Not joined'}</span></div>
         </article>
       </div>
+      {room.mode === 'online' && (
+        <ConnectionStatus state={peerConnectionState} onRetry={onRetryPeer} />
+      )}
       {room.mode === 'local' && !partner ? (
         <button className="bb-secondary-button" onClick={simulate}>Simulate partner joining</button>
       ) : partnerOnline ? (

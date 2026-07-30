@@ -14,9 +14,11 @@ function DemoFeed({ label = 'Partner' }: { label?: string }) {
 
 export function CompositionPreview({
   stream,
+  remoteStream = null,
   captured = false,
 }: {
   stream: MediaStream | null
+  remoteStream?: MediaStream | null
   captured?: boolean
 }) {
   const { state } = useBluebooth()
@@ -48,6 +50,8 @@ export function CompositionPreview({
       ) : (
         <DemoFeed label="Your camera" />
       )
+    ) : remoteStream ? (
+      <CameraVideo stream={remoteStream} className="bb-remote-video" />
     ) : (
       <DemoFeed />
     )
