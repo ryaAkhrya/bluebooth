@@ -8,6 +8,7 @@ import { GridSelector } from '@/components/bluebooth/editor/grid-selector'
 import { LayoutControls } from '@/components/bluebooth/editor/layout-controls'
 import { TimerControls } from '@/components/bluebooth/editor/timer-controls'
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
+import { useLocalMedia } from '@/components/bluebooth/state/local-media'
 import type { CameraStatus, SetupStep } from '@/types/bluebooth'
 
 const steps: Array<{ id: SetupStep; label: string; icon: typeof Grid2X2 }> = [
@@ -31,6 +32,7 @@ export function SetupScreen({
   onRequestCamera: (deviceId?: string) => Promise<void>
 }) {
   const { state, dispatch } = useBluebooth()
+  const media = useLocalMedia()
   return (
     <main className="bb-setup bb-screen">
       <div className="bb-setup-heading"><div><span className="bb-eyebrow">Booth setup</span><h1>Make it yours</h1></div><span className="bb-room-pill">{state.roomCode}</span></div>
@@ -57,7 +59,7 @@ export function SetupScreen({
           {state.setupStep === 'timer' && <><header><h2>Session timing</h2><p>Choose a countdown and pace.</p></header><TimerControls /></>}
         </section>
       </div>
-      <div className="bb-bottom-bar"><span>{state.participants.length}/2 connected</span><button className="bb-primary-button" onClick={() => { dispatch({ type: 'reset-session' }); dispatch({ type: 'navigate', screen: 'session' }) }}>Start session <ArrowRight /></button></div>
+      <div className="bb-bottom-bar"><span>{state.participants.length}/2 connected</span><button className="bb-primary-button" onClick={() => { media.clearCaptures(); media.clearFinalResult(); dispatch({ type: 'reset-session' }); dispatch({ type: 'navigate', screen: 'session' }) }}>Start session <ArrowRight /></button></div>
     </main>
   )
 }

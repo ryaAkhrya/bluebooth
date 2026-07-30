@@ -23,7 +23,6 @@ export function JoinRoomScreen({ onStartCamera }: { onStartCamera: () => Promise
         { id: 'self', name: name.trim() || 'You', connected: true, isSelf: true },
       ],
     })
-    dispatch({ type: 'set-demo-partner', enabled: true })
     dispatch({ type: 'navigate', screen: 'waiting' })
     void onStartCamera()
   }

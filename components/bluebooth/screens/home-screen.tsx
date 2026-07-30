@@ -10,8 +10,8 @@ export function HomeScreen() {
   const { dispatch } = useBluebooth()
   const [open, setOpen] = useState(false)
   const { result, load } = useLocalResult()
-  const openPrevious = () => {
-    load()
+  const openPrevious = async () => {
+    await load()
     setOpen(true)
   }
   return (
@@ -24,7 +24,7 @@ export function HomeScreen() {
           <button className="bb-primary-button" onClick={() => dispatch({ type: 'navigate', screen: 'create' })}>Create a room <ArrowRight /></button>
           <button className="bb-secondary-button" onClick={() => dispatch({ type: 'navigate', screen: 'join' })}>Join with a code</button>
         </div>
-        <button className="bb-previous-button" onClick={openPrevious}><ImageIcon /> Open previous result</button>
+        <button className="bb-previous-button" onClick={() => void openPrevious()}><ImageIcon /> Open previous result</button>
       </section>
       <div className="bb-home-preview" aria-hidden="true">
         <div className="bb-mini-strip"><i /><i /><i /><i /><span>Room · Bluebooth</span></div>

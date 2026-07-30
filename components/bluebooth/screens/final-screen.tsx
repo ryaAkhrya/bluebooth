@@ -3,50 +3,80 @@
 import { Download, Save } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
+import { useLocalMedia } from '@/components/bluebooth/state/local-media'
 import { useToast } from '@/components/bluebooth/ui/toast-provider'
-import { renderFinalCanvas } from '@/lib/bluebooth/canvas-renderer'
+import { renderComposition } from '@/lib/bluebooth/canvas-renderer'
 import { getGridPreset } from '@/lib/bluebooth/presets/grids'
+import { getFramePreset } from '@/lib/bluebooth/presets/frames'
+import { buildResultFilename } from '@/lib/bluebooth/image'
 import { useLocalResult } from '@/hooks/use-local-result'
 
 export function FinalScreen() {
   const { state, dispatch } = useBluebooth()
   const toast = useToast()
+  const {
+    captures,
+    customFrame: customFrameResource,
+    finalResult,
+    setFinalResult,
+    clearAll,
+  } = useLocalMedia()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ready, setReady] = useState(false)
   const [saved, setSaved] = useState(false)
   const { save } = useLocalResult()
   const grid = getGridPreset(state.selectedGrid)
+  const frame = getFramePreset(state.selectedFrame)
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     let active = true
-    void renderFinalCanvas(canvas, state).then((image) => {
+    void renderComposition(canvas, {
+      preset: grid,
+      frame,
+      layout: state.layout,
+      frameOptions: state.frameOptions,
+      customFrame:
+        state.customFrame && customFrameResource
+          ? { ...state.customFrame, source: customFrameResource.url }
+          : null,
+      slotImages: captures.map((capture) => capture?.url ?? null),
+      roomCode: state.roomCode,
+      roomName: state.roomName,
+    }).then((blob) => {
       if (!active) return
-      if (state.finalImage !== image) dispatch({ type: 'set-final-image', image })
+      setFinalResult(blob, grid.output[0], grid.output[1])
       setReady(true)
     }).catch(() => toast('Final image could not be rendered.', 'error'))
     return () => { active = false }
-  }, [dispatch, state, toast])
+  }, [
+    frame,
+    grid,
+    captures,
+    customFrameResource,
+    state.customFrame,
+    state.frameOptions,
+    state.layout,
+    state.roomCode,
+    state.roomName,
+    setFinalResult,
+    toast,
+  ])
 
   const download = () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    canvas.toBlob((blob) => {
-      if (!blob) return toast('Download could not be prepared.', 'error')
-      const url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = `bluebooth-${state.roomCode || 'room'}-${new Date().toISOString().slice(0, 10)}.png`
-      anchor.click()
-      URL.revokeObjectURL(url)
-    }, 'image/png')
+    if (!finalResult) return
+    const anchor = document.createElement('a')
+    anchor.href = finalResult.url
+    anchor.download = buildResultFilename(state.roomCode, new Date())
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
   }
-  const saveResult = () => {
-    if (!state.finalImage) return
+  const saveResult = async () => {
+    if (!finalResult) return
     try {
-      save({
-        image: state.finalImage,
+      await save(finalResult.blob, {
         code: state.roomCode,
         roomName: state.roomName,
         gridName: grid.name,
@@ -65,9 +95,9 @@ export function FinalScreen() {
       <div className="bb-final-canvas"><canvas ref={canvasRef} aria-label="Final composed photobooth image" /></div>
       <div className="bb-final-actions">
         <button className="bb-primary-button" disabled={!ready} onClick={download}><Download /> Download PNG</button>
-        <button className="bb-secondary-button" disabled={!ready || saved} onClick={saveResult}><Save /> {saved ? 'Saved' : 'Save result'}</button>
+        <button className="bb-secondary-button" disabled={!ready || saved} onClick={() => void saveResult()}><Save /> {saved ? 'Saved' : 'Save result'}</button>
       </div>
-      <button className="bb-text-button" onClick={() => { dispatch({ type: 'reset-room' }) }}>Create another booth</button>
+      <button className="bb-text-button" onClick={() => { clearAll(); dispatch({ type: 'reset-room' }) }}>Create another booth</button>
     </main>
   )
 }

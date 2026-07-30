@@ -2,6 +2,7 @@
 
 import { AppHeader } from '@/components/bluebooth/app-header'
 import { BlueboothProvider, useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
+import { LocalMediaProvider, useLocalMedia } from '@/components/bluebooth/state/local-media'
 import { ToastProvider, useToast } from '@/components/bluebooth/ui/toast-provider'
 import { CreateRoomScreen } from '@/components/bluebooth/screens/create-room-screen'
 import { FinalScreen } from '@/components/bluebooth/screens/final-screen'
@@ -17,9 +18,11 @@ import './bluebooth.css'
 export function BlueboothApp({ initialJoinCode }: { initialJoinCode?: string }) {
   return (
     <BlueboothProvider initialJoinCode={initialJoinCode}>
-      <ToastProvider>
-        <BlueboothAppContent />
-      </ToastProvider>
+      <LocalMediaProvider>
+        <ToastProvider>
+          <BlueboothAppContent />
+        </ToastProvider>
+      </LocalMediaProvider>
     </BlueboothProvider>
   )
 }
@@ -27,9 +30,11 @@ export function BlueboothApp({ initialJoinCode }: { initialJoinCode?: string }) 
 function BlueboothAppContent() {
   const { state, dispatch } = useBluebooth()
   const camera = useCamera()
+  const media = useLocalMedia()
   const toast = useToast()
   const leave = () => {
     camera.stop()
+    media.clearAll()
     dispatch({ type: 'reset-room' })
     toast('You left the room.')
   }

@@ -71,8 +71,10 @@ export interface FrameOptions {
 }
 
 export interface CustomFrame {
+  id: string
   name: string
-  url: string
+  width: number
+  height: number
   opacity: number
   scale: number
   x: number
@@ -120,9 +122,5 @@ export interface BlueboothState {
   shotDelay: number
   timerSound: boolean
   flash: boolean
-  retakeMode: 'individual' | 'restart'
-  capturedPhotos: string[]
   retakeIndex: number | null
-  finalImage: string | null
-  demoPartner: boolean
 }

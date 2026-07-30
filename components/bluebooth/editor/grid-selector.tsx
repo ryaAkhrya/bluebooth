@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
-import { getGridTemplateAreas, getSlotIds } from '@/lib/bluebooth/geometry'
+import { useLocalMedia } from '@/components/bluebooth/state/local-media'
+import { getCompositionGeometry, getSlotIds } from '@/lib/bluebooth/geometry'
+import { getFramePreset } from '@/lib/bluebooth/presets/frames'
 import { GRID_PRESETS } from '@/lib/bluebooth/presets/grids'
 import type { GridCategory } from '@/types/bluebooth'
 
@@ -16,6 +18,7 @@ const categories: Array<{ id: GridCategory | 'all'; label: string }> = [
 
 export function GridSelector() {
   const { state, dispatch } = useBluebooth()
+  const media = useLocalMedia()
   const [category, setCategory] = useState<GridCategory | 'all'>('all')
   const presets = category === 'all'
     ? GRID_PRESETS
@@ -39,24 +42,45 @@ export function GridSelector() {
             key={preset.id}
             className={`bb-grid-card ${state.selectedGrid === preset.id ? 'is-selected' : ''}`}
             aria-pressed={state.selectedGrid === preset.id}
-            onClick={() => dispatch({ type: 'select-grid', id: preset.id })}
+            onClick={() => {
+              media.clearCaptures()
+              media.clearFinalResult()
+              dispatch({ type: 'select-grid', id: preset.id })
+            }}
           >
-            <span
-              className="bb-grid-thumb"
-              style={{
-                aspectRatio: `${preset.output[0]} / ${preset.output[1]}`,
-                gridTemplateAreas: getGridTemplateAreas(preset),
-                gridTemplateColumns: `repeat(${preset.columns}, 1fr)`,
-                gridTemplateRows: `repeat(${preset.rows}, 1fr)`,
-              }}
-            >
-              {getSlotIds(preset).map((slot) => <span key={slot} style={{ gridArea: slot }} />)}
-            </span>
+            <GridThumbnail preset={preset} />
             <strong>{preset.name}</strong>
             <small>{getSlotIds(preset).length} · {preset.ratio}</small>
           </button>
         ))}
       </div>
     </>
+  )
+}
+
+function GridThumbnail({ preset }: { preset: (typeof GRID_PRESETS)[number] }) {
+  const frame = getFramePreset('clean-white')
+  const geometry = getCompositionGeometry({
+    preset,
+    frame,
+    layout: { gap: 4, padding: 0, radius: 4, background: '#ffffff' },
+  })
+  return (
+    <span
+      className="bb-grid-thumb"
+      style={{ aspectRatio: `${preset.output[0]} / ${preset.output[1]}` }}
+    >
+      {geometry.slots.map((slot) => (
+        <span
+          key={slot.id}
+          style={{
+            left: `${(slot.x / geometry.width) * 100}%`,
+            top: `${(slot.y / geometry.height) * 100}%`,
+            width: `${(slot.width / geometry.width) * 100}%`,
+            height: `${(slot.height / geometry.height) * 100}%`,
+          }}
+        />
+      ))}
+    </span>
   )
 }

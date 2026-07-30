@@ -2,7 +2,8 @@
 
 import { CameraVideo } from '@/components/bluebooth/camera/camera-video'
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
-import { getGridTemplateAreas, getSlotIds } from '@/lib/bluebooth/geometry'
+import { useLocalMedia } from '@/components/bluebooth/state/local-media'
+import { getCompositionGeometry } from '@/lib/bluebooth/geometry'
 import { cameraFilterCss, cameraTransform } from '@/lib/bluebooth/media'
 import { getFramePreset } from '@/lib/bluebooth/presets/frames'
 import { getGridPreset } from '@/lib/bluebooth/presets/grids'
@@ -19,9 +20,16 @@ export function CompositionPreview({
   captured?: boolean
 }) {
   const { state } = useBluebooth()
+  const media = useLocalMedia()
   const grid = getGridPreset(state.selectedGrid)
   const frame = getFramePreset(state.selectedFrame)
-  const slotIds = getSlotIds(grid)
+  const geometry = getCompositionGeometry({
+    preset: grid,
+    frame,
+    layout: state.layout,
+    showDate: state.frameOptions.showDate,
+    showRoom: state.frameOptions.showRoom,
+  })
   const filter = cameraFilterCss(state.cameraSettings)
   const transform = cameraTransform(state.cameraSettings)
   const sourceFor = (index: number) => {
@@ -54,43 +62,41 @@ export function CompositionPreview({
         background: frame.background,
         borderColor: frame.borderColor,
         borderWidth: frame.border,
-        padding: frame.padding,
       }}
       role="img"
       aria-label="Photobooth composition preview"
     >
       {frame.topLabel && <div className="bb-frame-top-label">{label || state.roomName}</div>}
-      {state.customFrame && !state.customFrame.front && (
-        <CustomFrameLayer />
+      {state.customFrame && media.customFrame && !state.customFrame.front && (
+        <CustomFrameLayer source={media.customFrame.url} behind />
       )}
       <div
-        className="bb-composition-grid"
+        className="bb-composition-inner-bg"
         style={{
-          gridTemplateAreas: getGridTemplateAreas(grid),
-          gridTemplateColumns: `repeat(${grid.columns}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${grid.rows}, minmax(0, 1fr))`,
-          gap: state.layout.gap,
-          padding: state.layout.padding,
+          inset: `${(geometry.framePadding / Math.min(geometry.width, geometry.height)) * 400}px`,
           background: state.layout.background,
         }}
-      >
-        {slotIds.map((id, index) => {
+      />
+      <div className="bb-composition-grid">
+        {geometry.slots.map((rect, index) => {
           const source = sourceFor(index)
           return (
             <div
               className="bb-composition-slot"
-              key={id}
+              key={rect.id}
               style={{
-                gridArea: id,
-                borderRadius: state.layout.radius + (frame.roundExtra ? 8 : 0),
+                left: `${(rect.x / geometry.width) * 100}%`,
+                top: `${(rect.y / geometry.height) * 100}%`,
+                width: `${(rect.width / geometry.width) * 100}%`,
+                height: `${(rect.height / geometry.height) * 100}%`,
+                borderRadius: `${(rect.radius / Math.min(geometry.width, geometry.height)) * 400}px`,
                 borderColor: state.frameOptions.borderColor,
                 borderWidth: state.frameOptions.borderWidth,
               }}
             >
-              {captured && state.capturedPhotos[index] ? (
-                // Captures are local browser data URLs produced by the current session.
+              {captured && media.captures[index] ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={state.capturedPhotos[index]} alt={`Captured photo ${index + 1}`} />
+                <img src={media.captures[index]?.url} alt={`Captured photo ${index + 1}`} />
               ) : source === 'split' ? (
                 <div className="bb-split-feed">
                   {renderSource('user')}
@@ -111,20 +117,22 @@ export function CompositionPreview({
             .join(' · ')}
         </div>
       )}
-      {state.customFrame?.front && <CustomFrameLayer />}
+      {state.customFrame?.front && media.customFrame && (
+        <CustomFrameLayer source={media.customFrame.url} />
+      )}
     </div>
   )
 }
 
-function CustomFrameLayer() {
+function CustomFrameLayer({ source, behind = false }: { source: string; behind?: boolean }) {
   const { state } = useBluebooth()
   const frame = state.customFrame
   if (!frame) return null
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      className="bb-custom-frame-layer"
-      src={frame.url}
+      className={`bb-custom-frame-layer ${behind ? 'is-behind' : ''}`}
+      src={source}
       alt=""
       style={{
         opacity: frame.opacity / 100,

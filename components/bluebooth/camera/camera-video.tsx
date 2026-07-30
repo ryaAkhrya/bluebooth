@@ -13,7 +13,12 @@ export function CameraVideo({
 }) {
   const ref = useRef<HTMLVideoElement>(null)
   useEffect(() => {
-    if (ref.current) ref.current.srcObject = stream
+    const video = ref.current
+    if (!video) return
+    video.srcObject = stream
+    return () => {
+      video.srcObject = null
+    }
   }, [stream])
 
   return <video ref={ref} className={className} style={style} autoPlay playsInline muted />

@@ -31,10 +31,7 @@ type Action =
   | { type: 'set-shot-delay'; delay: number }
   | { type: 'set-timer-sound'; enabled: boolean }
   | { type: 'set-flash'; enabled: boolean }
-  | { type: 'set-captures'; photos: string[] }
   | { type: 'set-retake'; index: number | null }
-  | { type: 'set-final-image'; image: string | null }
-  | { type: 'set-demo-partner'; enabled: boolean }
   | { type: 'reset-session' }
   | { type: 'reset-room' }
 
@@ -72,11 +69,7 @@ const initialState: BlueboothState = {
   shotDelay: 2,
   timerSound: true,
   flash: true,
-  retakeMode: 'individual',
-  capturedPhotos: [],
   retakeIndex: null,
-  finalImage: null,
-  demoPartner: false,
 }
 
 function reducer(state: BlueboothState, action: Action): BlueboothState {
@@ -96,7 +89,7 @@ function reducer(state: BlueboothState, action: Action): BlueboothState {
     case 'set-participants':
       return { ...state, participants: action.participants }
     case 'select-grid':
-      return { ...state, selectedGrid: action.id, capturedPhotos: [], finalImage: null }
+      return { ...state, selectedGrid: action.id }
     case 'select-frame':
       return { ...state, selectedFrame: action.id }
     case 'set-custom-frame':
@@ -123,16 +116,10 @@ function reducer(state: BlueboothState, action: Action): BlueboothState {
       return { ...state, timerSound: action.enabled }
     case 'set-flash':
       return { ...state, flash: action.enabled }
-    case 'set-captures':
-      return { ...state, capturedPhotos: action.photos }
     case 'set-retake':
       return { ...state, retakeIndex: action.index }
-    case 'set-final-image':
-      return { ...state, finalImage: action.image }
-    case 'set-demo-partner':
-      return { ...state, demoPartner: action.enabled }
     case 'reset-session':
-      return { ...state, capturedPhotos: [], retakeIndex: null, finalImage: null }
+      return { ...state, retakeIndex: null }
     case 'reset-room':
       return { ...initialState }
   }

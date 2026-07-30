@@ -1,4 +1,6 @@
 import { getCameraFilter } from '@/lib/bluebooth/presets/filters'
+import { TEMP_CAPTURE_MAX_DIMENSION } from '@/lib/bluebooth/constants'
+import { getCaptureDimensions, getImageDrawPlan } from '@/lib/bluebooth/image'
 import type { CameraSettings } from '@/types/bluebooth'
 
 export function cameraFilterCss(settings: CameraSettings): string {
@@ -24,48 +26,70 @@ export function cameraTransform(settings: CameraSettings): string {
   return `${settings.mirror ? 'scaleX(-1)' : ''} scale(${settings.zoom})`.trim()
 }
 
-export function captureVideoFrame(
+export interface CapturedFrame {
+  blob: Blob
+  width: number
+  height: number
+}
+
+function canvasToBlob(
+  canvas: HTMLCanvasElement,
+  type: 'image/webp' | 'image/jpeg',
+  quality: number,
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => blob ? resolve(blob) : reject(new Error('The browser could not encode the capture')),
+      type,
+      quality,
+    )
+  })
+}
+
+export async function captureVideoFrame(
   video: HTMLVideoElement | null,
   settings: CameraSettings,
-): string {
+): Promise<CapturedFrame> {
   const canvas = document.createElement('canvas')
-  canvas.width = 800
-  canvas.height = 600
+  const sourceWidth = video?.videoWidth || 800
+  const sourceHeight = video?.videoHeight || 600
+  const [width, height] = getCaptureDimensions(
+    sourceWidth,
+    sourceHeight,
+    TEMP_CAPTURE_MAX_DIMENSION,
+  )
+  canvas.width = width
+  canvas.height = height
   const context = canvas.getContext('2d')
-  if (!context) return ''
+  if (!context) throw new Error('Canvas is unavailable')
 
   if (video?.videoWidth && video.videoHeight) {
+    context.fillStyle = '#dceeff'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    const plan = getImageDrawPlan(
+      video.videoWidth,
+      video.videoHeight,
+      canvas.width,
+      canvas.height,
+      settings.fit,
+      settings.zoom,
+    )
     context.save()
     context.filter = cameraFilterCss(settings)
     if (settings.mirror) {
       context.translate(canvas.width, 0)
       context.scale(-1, 1)
     }
-    const videoRatio = video.videoWidth / video.videoHeight
-    const canvasRatio = canvas.width / canvas.height
-    let sourceX = 0
-    let sourceY = 0
-    let sourceWidth = video.videoWidth
-    let sourceHeight = video.videoHeight
-    if (settings.fit === 'cover') {
-      if (videoRatio > canvasRatio) {
-        sourceWidth = video.videoHeight * canvasRatio
-        sourceX = (video.videoWidth - sourceWidth) / 2
-      } else {
-        sourceHeight = video.videoWidth / canvasRatio
-        sourceY = (video.videoHeight - sourceHeight) / 2
-      }
-    }
     context.drawImage(
       video,
-      sourceX,
-      sourceY,
-      sourceWidth,
-      sourceHeight,
-      0,
-      0,
-      canvas.width,
-      canvas.height,
+      plan.sourceX,
+      plan.sourceY,
+      plan.sourceWidth,
+      plan.sourceHeight,
+      plan.destinationX,
+      plan.destinationY,
+      plan.destinationWidth,
+      plan.destinationHeight,
     )
     context.restore()
   } else {
@@ -79,5 +103,11 @@ export function captureVideoFrame(
     context.textAlign = 'center'
     context.fillText('Bluebooth', canvas.width / 2, canvas.height / 2)
   }
-  return canvas.toDataURL('image/jpeg', 0.9)
+  let blob: Blob
+  try {
+    blob = await canvasToBlob(canvas, 'image/webp', 0.9)
+  } catch {
+    blob = await canvasToBlob(canvas, 'image/jpeg', 0.9)
+  }
+  return { blob, width: canvas.width, height: canvas.height }
 }

@@ -3,32 +3,58 @@
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
 import { FRAME_PRESETS } from '@/lib/bluebooth/presets/frames'
 import { useToast } from '@/components/bluebooth/ui/toast-provider'
+import { useLocalMedia } from '@/components/bluebooth/state/local-media'
+import {
+  validateCustomFrameDimensions,
+  validateCustomFrameFile,
+} from '@/lib/bluebooth/validation'
 
 export function FrameSelector() {
   const { state, dispatch } = useBluebooth()
+  const media = useLocalMedia()
   const toast = useToast()
-  const chooseFile = (file?: File) => {
+  const chooseFile = async (file?: File) => {
     if (!file) return
-    if (!['image/png', 'image/webp'].includes(file.type)) {
-      toast('Choose a PNG or WebP frame.', 'error')
+    const basicValidation = validateCustomFrameFile(file)
+    if (!basicValidation.valid) {
+      toast(basicValidation.message, 'error')
       return
     }
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') return
+    const temporaryUrl = URL.createObjectURL(file)
+    try {
       const image = new Image()
-      image.onload = () => {
-        dispatch({
-          type: 'set-custom-frame',
-          frame: { name: file.name, url: reader.result as string, opacity: 100, scale: 100, x: 0, y: 0, fit: 'contain', front: true },
-        })
-        toast('Custom frame added.', 'success')
+      const dimensions = await new Promise<readonly [number, number]>((resolve, reject) => {
+        image.onload = () => resolve([image.naturalWidth, image.naturalHeight])
+        image.onerror = () => reject(new Error('decode'))
+        image.src = temporaryUrl
+      })
+      const dimensionValidation = validateCustomFrameDimensions(...dimensions)
+      if (!dimensionValidation.valid) {
+        toast(dimensionValidation.message, 'error')
+        return
       }
-      image.onerror = () => toast('That image could not be read.', 'error')
-      image.src = reader.result
+      media.setCustomFrame(file, ...dimensions)
+      dispatch({
+        type: 'set-custom-frame',
+        frame: {
+          id: crypto.randomUUID(),
+          name: file.name,
+          width: dimensions[0],
+          height: dimensions[1],
+          opacity: 100,
+          scale: 100,
+          x: 0,
+          y: 0,
+          fit: 'contain',
+          front: true,
+        },
+      })
+      toast('Custom frame added.', 'success')
+    } catch {
+      toast('That image could not be read.', 'error')
+    } finally {
+      URL.revokeObjectURL(temporaryUrl)
     }
-    reader.onerror = () => toast('That image could not be read.', 'error')
-    reader.readAsDataURL(file)
   }
 
   return (
@@ -54,7 +80,10 @@ export function FrameSelector() {
         <input
           type="file"
           accept="image/png,image/webp"
-          onChange={(event) => chooseFile(event.target.files?.[0])}
+          onChange={(event) => {
+            void chooseFile(event.target.files?.[0])
+            event.currentTarget.value = ''
+          }}
         />
       </label>
       {state.customFrame && (
@@ -64,6 +93,7 @@ export function FrameSelector() {
             <button
               className="bb-text-button"
               onClick={() => {
+                media.clearCustomFrame()
                 dispatch({ type: 'set-custom-frame', frame: null })
               }}
             >

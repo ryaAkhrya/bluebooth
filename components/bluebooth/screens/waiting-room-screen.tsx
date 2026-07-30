@@ -26,7 +26,6 @@ export function WaitingRoomScreen({
         { id: 'partner', name: 'Partner', connected: true, isSelf: false },
       ],
     })
-    dispatch({ type: 'set-demo-partner', enabled: true })
     toast('Partner joined.', 'success')
   }
   return (
