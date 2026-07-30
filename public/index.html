@@ -1,0 +1,2287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bluebooth</title>
+<style>
+  /* ============================================================
+     DESIGN TOKENS
+     Soft, bright blue palette. Deliberate, calm, minimal.
+     ============================================================ */
+  :root {
+    --bg: #F5FAFF;
+    --bg-2: #EAF5FF;
+    --blue: #4D9FFF;
+    --blue-dark: #1F5FAD;
+    --blue-light: #B9DCFF;
+    --text: #17243A;
+    --text-2: #607089;
+    --white: #FFFFFF;
+    --border: #D8E9F8;
+    --success: #3FA796;
+    --success-bg: #E3F6F1;
+    --error: #E06B7A;
+    --error-bg: #FBEAEC;
+    --shadow-sm: 0 1px 2px rgba(31, 95, 173, 0.06);
+    --shadow: 0 6px 20px rgba(31, 95, 173, 0.08);
+    --shadow-lg: 0 12px 40px rgba(31, 95, 173, 0.12);
+    --radius: 14px;
+    --radius-lg: 18px;
+    --radius-sm: 10px;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --font: Inter, Manrope, "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body { min-height: 100vh; }
+
+  button { font-family: inherit; cursor: pointer; }
+  input, select, textarea { font-family: inherit; }
+
+  :focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* ============================================================
+     LAYOUT PRIMITIVES
+     ============================================================ */
+  .app {
+    max-width: 1440px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---- Header ---- */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--white);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-mark {
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    background: var(--blue);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--white);
+    flex-shrink: 0;
+  }
+  .logo-name { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .room-pill {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+  .room-pill.show { display: inline-flex; }
+  .room-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-2); }
+  .room-pill.connected .dot { background: var(--success); }
+
+  /* ---- Buttons ---- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    font-size: 14px;
+    font-weight: 600;
+    transition: transform 0.12s var(--ease), background 0.18s var(--ease), box-shadow 0.18s var(--ease), border-color 0.18s var(--ease);
+    white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--blue); color: var(--white); box-shadow: var(--shadow-sm); }
+  .btn-primary:hover { background: var(--blue-dark); }
+  .btn-secondary { background: var(--white); color: var(--blue-dark); border-color: var(--border); }
+  .btn-secondary:hover { background: var(--bg-2); }
+  .btn-ghost { background: transparent; color: var(--text-2); padding: 8px 12px; }
+  .btn-ghost:hover { background: var(--bg-2); color: var(--text); }
+  .btn-danger { background: var(--white); color: var(--error); border-color: var(--border); }
+  .btn-danger:hover { background: var(--error-bg); border-color: var(--error); }
+  .btn-icon {
+    width: 38px; height: 38px; padding: 0;
+    border-radius: 10px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .btn-icon:hover { background: var(--bg-2); color: var(--blue-dark); }
+  .btn-icon.active { background: var(--blue); color: var(--white); border-color: var(--blue); }
+  .btn-block { width: 100%; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ---- Cards ---- */
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* ---- Form controls ---- */
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+  .input, .select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--white);
+    color: var(--text);
+    font-size: 14px;
+    transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+  }
+  .input:focus, .select:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(77, 159, 255, 0.15);
+  }
+  .code-input {
+    letter-spacing: 0.35em;
+    text-align: center;
+    font-size: 22px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 14px;
+  }
+  .hint { font-size: 12px; color: var(--text-2); margin-top: 6px; }
+  .field-error { font-size: 12px; color: var(--error); margin-top: 6px; display: none; }
+  .field-error.show { display: block; }
+
+  /* ---- Toggle ---- */
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; }
+  .toggle-row .label { font-size: 14px; font-weight: 500; }
+  .toggle {
+    position: relative;
+    width: 42px; height: 24px;
+    border-radius: 999px;
+    background: var(--border);
+    border: none;
+    transition: background 0.2s var(--ease);
+    flex-shrink: 0;
+  }
+  .toggle::after {
+    content: "";
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--white);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s var(--ease);
+  }
+  .toggle[aria-checked="true"] { background: var(--blue); }
+  .toggle[aria-checked="true"]::after { transform: translateX(18px); }
+
+  /* ---- Slider ---- */
+  .slider-row { margin-bottom: 14px; }
+  .slider-head { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-2); margin-bottom: 6px; }
+  .slider-head .val { font-weight: 600; color: var(--blue-dark); }
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 6px;
+    border-radius: 999px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--blue); border: 3px solid var(--white);
+    box-shadow: var(--shadow-sm); cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--blue); border: 3px solid var(--white);
+    box-shadow: var(--shadow-sm); cursor: pointer;
+  }
+
+  /* ---- Chip / segmented ---- */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--white);
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.15s var(--ease);
+  }
+  .chip:hover { border-color: var(--blue-light); color: var(--blue-dark); }
+  .chip.active { background: var(--blue); color: var(--white); border-color: var(--blue); }
+
+  .segmented { display: inline-flex; background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 3px; gap: 3px; }
+  .segmented button {
+    border: none; background: transparent; color: var(--text-2);
+    padding: 6px 12px; border-radius: 7px; font-size: 13px; font-weight: 600;
+    transition: all 0.15s var(--ease);
+  }
+  .segmented button.active { background: var(--white); color: var(--blue-dark); box-shadow: var(--shadow-sm); }
+
+  /* ============================================================
+     SCREENS
+     ============================================================ */
+  .screen-wrap { flex: 1; display: flex; flex-direction: column; }
+  .screen { display: none; flex: 1; padding: 28px 24px; animation: screenIn 0.3s var(--ease); }
+  .screen.active { display: flex; flex-direction: column; }
+  @keyframes screenIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .center-col { max-width: 460px; margin: 32px auto; width: 100%; }
+  .back-link { align-self: flex-start; margin-bottom: 4px; }
+
+  h1.title { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .subtitle { color: var(--text-2); font-size: 15px; margin-bottom: 24px; }
+  h2.section-title { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
+
+  /* ---- Home ---- */
+  .home-inner { max-width: 900px; margin: 40px auto; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+  .home-copy .eyebrow { font-size: 13px; font-weight: 600; color: var(--blue); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 12px; }
+  .home-actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+  .home-prev { margin-top: 20px; }
+  .home-prev button { color: var(--blue-dark); background: none; border: none; font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; }
+
+  /* Home preview strip mockup */
+  .home-preview { display: flex; justify-content: center; }
+  .mini-strip {
+    background: var(--white); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px; box-shadow: var(--shadow); display: grid; gap: 6px; width: 150px;
+    transform: rotate(-2deg);
+  }
+  .mini-strip .cell { aspect-ratio: 4/3; border-radius: 6px; background: linear-gradient(135deg, var(--blue-light), var(--bg-2)); position: relative; overflow: hidden; }
+  .mini-strip .cell::after { content:""; position:absolute; inset:0; background: radial-gradient(circle at 60% 40%, rgba(255,255,255,0.5), transparent 60%); }
+  .mini-strip .cap { text-align: center; font-size: 10px; color: var(--text-2); font-weight: 600; padding-top: 2px; }
+
+  /* ---- Room code display ---- */
+  .code-display {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--bg-2); border: 1px dashed var(--blue-light);
+    border-radius: var(--radius); padding: 14px 16px; margin: 12px 0;
+  }
+  .code-display .code { font-size: 26px; font-weight: 800; letter-spacing: 0.15em; color: var(--blue-dark); }
+  .code-display .label-sm { font-size: 12px; color: var(--text-2); }
+  .status-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--success); font-weight: 600; margin: 8px 0; }
+  .status-line .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+
+  /* ---- Waiting room ---- */
+  .participants { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+  .participant {
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; background: var(--white);
+    transition: border-color 0.2s var(--ease);
+  }
+  .participant.connected { border-color: var(--blue-light); }
+  .p-cam { aspect-ratio: 4/3; border-radius: 10px; background: var(--bg-2); overflow: hidden; position: relative; margin-bottom: 10px; display:flex; align-items:center; justify-content:center; }
+  .p-cam video { width: 100%; height: 100%; object-fit: cover; }
+  .p-cam .placeholder { color: var(--text-2); font-size: 12px; text-align: center; padding: 12px; }
+  .p-meta { display: flex; align-items: center; justify-content: space-between; }
+  .p-name { font-weight: 600; font-size: 14px; }
+  .p-status { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; }
+  .p-status.waiting { background: var(--bg-2); color: var(--text-2); }
+  .p-status.connected { background: var(--success-bg); color: var(--success); }
+
+  /* ============================================================
+     BOOTH SETUP
+     ============================================================ */
+  .setup-layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; flex: 1; }
+  .setup-preview-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .setup-panel-col { min-width: 0; }
+
+  .steps { display: flex; gap: 6px; margin-bottom: 4px; }
+  .step-btn {
+    flex: 1; padding: 10px 8px; border: 1px solid var(--border); background: var(--white);
+    border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--text-2);
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    transition: all 0.15s var(--ease);
+  }
+  .step-btn .num { width: 20px; height: 20px; border-radius: 50%; background: var(--bg-2); color: var(--text-2); font-size: 11px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
+  .step-btn.active { border-color: var(--blue); color: var(--blue-dark); background: var(--bg-2); }
+  .step-btn.active .num { background: var(--blue); color: var(--white); }
+
+  .preview-stage {
+    flex: 1; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 20px; display: flex; align-items: center; justify-content: center; min-height: 320px;
+    box-shadow: var(--shadow-sm); overflow: hidden;
+  }
+  /* Composition preview — mirrors final canvas layout */
+  .comp {
+    background: var(--comp-bg, #fff);
+    display: grid; position: relative;
+    box-shadow: var(--shadow); max-width: 100%; max-height: 62vh;
+  }
+  .comp .slot {
+    position: relative; overflow: hidden; background: var(--bg-2);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .comp .slot video, .comp .slot canvas, .comp .slot img.shot { width: 100%; height: 100%; object-fit: cover; display:block; }
+  .comp .slot .slot-num { position: absolute; top: 6px; left: 6px; font-size: 10px; font-weight: 700; color: var(--white); background: rgba(23,36,58,0.45); padding: 1px 6px; border-radius: 6px; }
+  .comp .slot .demo-feed { width: 100%; height: 100%; }
+  .comp-frame-overlay { position: absolute; inset: 0; pointer-events: none; }
+  .comp-frame-overlay img { position: absolute; }
+
+  .panel { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-sm); }
+  .panel-section { display: none; }
+  .panel-section.active { display: block; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .divider { height: 1px; background: var(--border); margin: 16px 0; border: none; }
+
+  /* Grid selector */
+  .grid-filter { margin-bottom: 14px; }
+  .grid-list {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    max-height: 420px; overflow-y: auto; padding: 2px; margin: 0 -2px;
+  }
+  .grid-card {
+    border: 1.5px solid var(--border); border-radius: 12px; padding: 8px; background: var(--white);
+    text-align: left; transition: all 0.15s var(--ease); position: relative;
+  }
+  .grid-card:hover { border-color: var(--blue-light); transform: translateY(-2px); }
+  .grid-card.selected { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(77,159,255,0.15); }
+  .grid-thumb {
+    background: var(--bg-2); border-radius: 7px; padding: 6px; margin-bottom: 6px;
+    display: grid; gap: 3px; width: 100%; aspect-ratio: 1/1; align-content: center;
+  }
+  .grid-thumb .tcell { background: var(--blue-light); border-radius: 3px; min-height: 6px; }
+  .grid-card .gname { font-size: 11px; font-weight: 700; color: var(--text); line-height: 1.2; }
+  .grid-card .gmeta { font-size: 10px; color: var(--text-2); margin-top: 2px; }
+  .grid-card .gbadge { position: absolute; top: 6px; right: 6px; font-size: 9px; font-weight: 700; color: var(--blue-dark); background: var(--white); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; }
+
+  /* Frame selector */
+  .frame-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 300px; overflow-y: auto; padding: 2px; }
+  .frame-card {
+    border: 1.5px solid var(--border); border-radius: 12px; padding: 8px; background: var(--white);
+    transition: all 0.15s var(--ease);
+  }
+  .frame-card:hover { border-color: var(--blue-light); transform: translateY(-2px); }
+  .frame-card.selected { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(77,159,255,0.15); }
+  .frame-swatch { aspect-ratio: 1/1; border-radius: 7px; margin-bottom: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .frame-swatch .inner { width: 60%; height: 60%; background: var(--blue-light); border-radius: 3px; }
+  .frame-card .fname { font-size: 11px; font-weight: 700; text-align: center; }
+
+  /* Dropzone */
+  .dropzone {
+    border: 2px dashed var(--blue-light); border-radius: var(--radius); padding: 22px 16px;
+    text-align: center; background: var(--bg-2); transition: all 0.2s var(--ease); cursor: pointer;
+  }
+  .dropzone.drag { border-color: var(--blue); background: var(--bg); }
+  .dropzone .dz-title { font-weight: 700; font-size: 14px; margin: 8px 0 2px; }
+  .dropzone .dz-sub { font-size: 12px; color: var(--text-2); }
+  .dz-file { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 8px 10px; background: var(--white); border: 1px solid var(--border); border-radius: 10px; }
+  .dz-file .fthumb { width: 40px; height: 40px; border-radius: 7px; background: var(--bg-2); background-size: cover; background-position: center; flex-shrink: 0; }
+  .dz-file .fmeta { flex: 1; min-width: 0; }
+  .dz-file .fmeta .n { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dz-file .fmeta .s { font-size: 11px; color: var(--text-2); }
+
+  /* Filter previews */
+  .filter-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .filter-item { text-align: center; }
+  .filter-item .fp { aspect-ratio: 1/1; border-radius: 8px; overflow: hidden; border: 2px solid var(--border); background: linear-gradient(135deg, #6fb1ff, #cfe6ff 60%, #ffd9a8); transition: border-color 0.15s var(--ease); }
+  .filter-item.active .fp { border-color: var(--blue); }
+  .filter-item .fl { font-size: 10px; font-weight: 600; color: var(--text-2); margin-top: 3px; }
+
+  /* ============================================================
+     PHOTO SESSION
+     ============================================================ */
+  .session-wrap { max-width: 720px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 16px; align-items: center; }
+  .session-head { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+  .session-progress { font-size: 14px; font-weight: 700; }
+  .session-stage { position: relative; width: 100%; background: #000; border-radius: var(--radius-lg); overflow: hidden; aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); }
+  .session-stage video, .session-stage canvas.live { width: 100%; height: 100%; object-fit: cover; }
+  .countdown-num {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 120px; font-weight: 800; color: var(--white); text-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    pointer-events: none;
+  }
+  .countdown-num.pop { animation: cdpop 0.9s var(--ease); }
+  @keyframes cdpop { 0% { transform: scale(0.5); opacity: 0; } 30% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.9; } }
+  .flash { position: absolute; inset: 0; background: var(--white); opacity: 0; pointer-events: none; }
+  .flash.fire { animation: flashfire 0.4s ease-out; }
+  @keyframes flashfire { 0% { opacity: 0; } 15% { opacity: 0.9; } 100% { opacity: 0; } }
+  .session-thumbs { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .session-thumbs .st { width: 56px; height: 56px; border-radius: 8px; border: 2px solid var(--border); background: var(--bg-2); overflow: hidden; }
+  .session-thumbs .st img { width: 100%; height: 100%; object-fit: cover; }
+  .session-thumbs .st.pending { display: flex; align-items: center; justify-content: center; color: var(--text-2); font-size: 12px; font-weight: 700; }
+  .session-controls { display: flex; gap: 10px; }
+
+  /* ---- Review ---- */
+  .review-wrap { display: grid; grid-template-columns: 1fr 320px; gap: 24px; max-width: 1000px; margin: 0 auto; width: 100%; }
+  .review-preview { display: flex; align-items: flex-start; justify-content: center; }
+  .review-thumbs { display: flex; flex-direction: column; gap: 10px; }
+  .review-thumb { display: flex; gap: 12px; align-items: center; border: 1px solid var(--border); border-radius: 12px; padding: 8px; background: var(--white); }
+  .review-thumb .rt-img { width: 64px; height: 64px; border-radius: 8px; overflow: hidden; background: var(--bg-2); flex-shrink: 0; }
+  .review-thumb .rt-img img { width: 100%; height: 100%; object-fit: cover; }
+  .review-thumb .rt-info { flex: 1; }
+  .review-thumb .rt-info .n { font-size: 13px; font-weight: 600; }
+
+  /* ---- Final result ---- */
+  .final-wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; max-width: 700px; margin: 0 auto; width: 100%; }
+  .final-canvas-box { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow); }
+  .final-canvas-box canvas { max-width: 100%; max-height: 60vh; border-radius: 8px; display: block; }
+  .final-meta { font-size: 13px; color: var(--text-2); text-align: center; }
+  .final-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .saved-note { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); background: var(--bg-2); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); }
+  .saved-note.on { color: var(--success); background: var(--success-bg); border-color: var(--success); }
+
+  /* ============================================================
+     MODAL / TOAST / TOOLTIP
+     ============================================================ */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(23,36,58,0.4);
+    display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+  }
+  .modal-backdrop.open { display: flex; animation: fadeIn 0.2s var(--ease); }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    background: var(--white); border-radius: var(--radius-lg); padding: 22px; max-width: 460px; width: 100%;
+    box-shadow: var(--shadow-lg); animation: modalIn 0.25s var(--ease); max-height: 90vh; overflow-y: auto;
+  }
+  @keyframes modalIn { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .modal-head h3 { font-size: 18px; font-weight: 700; }
+  .empty-state { text-align: center; padding: 30px 10px; color: var(--text-2); }
+  .empty-state svg { color: var(--blue-light); margin-bottom: 12px; }
+
+  .toast-wrap { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .toast {
+    background: var(--text); color: var(--white); padding: 10px 18px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; box-shadow: var(--shadow-lg);
+    display: flex; align-items: center; gap: 8px; animation: toastIn 0.25s var(--ease);
+  }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--error); }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .toast.out { animation: toastOut 0.25s var(--ease) forwards; }
+  @keyframes toastOut { to { opacity: 0; transform: translateY(12px); } }
+
+  [data-tip] { position: relative; }
+  [data-tip]:hover::after {
+    content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--white); font-size: 11px; font-weight: 600; padding: 4px 8px;
+    border-radius: 6px; white-space: nowrap; pointer-events: none; z-index: 30;
+  }
+
+  .mobile-tabs { display: none; }
+  .bottom-bar { display: none; }
+
+  /* ============================================================
+     RESPONSIVE
+     ============================================================ */
+  @media (max-width: 900px) {
+    .setup-layout { grid-template-columns: 1fr; }
+    .home-inner { grid-template-columns: 1fr; gap: 24px; }
+    .home-preview { order: -1; }
+    .review-wrap { grid-template-columns: 1fr; }
+    .grid-list, .frame-list { grid-template-columns: repeat(2, 1fr); }
+    .setup-panel-col .panel { padding: 16px; }
+    /* Mobile panel tabs */
+    .mobile-tabs {
+      display: flex; position: sticky; top: 65px; z-index: 15; background: var(--bg);
+      gap: 6px; padding: 8px 0; margin-bottom: 4px; overflow-x: auto;
+    }
+  }
+  @media (max-width: 640px) {
+    .screen { padding: 18px 14px; }
+    h1.title { font-size: 25px; }
+    .header { padding: 12px 14px; }
+    .participants { grid-template-columns: 1fr; }
+    .grid-list { grid-template-columns: repeat(2, 1fr); max-height: none; }
+    .filter-list { grid-template-columns: repeat(4, 1fr); }
+    .steps { flex-wrap: wrap; }
+    .step-btn { flex: 1 1 40%; }
+    .bottom-bar {
+      display: flex; position: sticky; bottom: 0; gap: 10px; padding: 12px 14px;
+      background: var(--white); border-top: 1px solid var(--border); z-index: 15;
+    }
+    .bottom-bar .btn { flex: 1; }
+    .countdown-num { font-size: 88px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ============================================================
+       HEADER
+       ============================================================ -->
+  <header class="header">
+    <div class="logo">
+      <span class="logo-mark" aria-hidden="true">
+        <!-- Viewfinder / frame mark -->
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/>
+          <path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </span>
+      <span class="logo-name">Bluebooth</span>
+    </div>
+    <div class="header-right">
+      <span class="room-pill" id="headerRoom">
+        <span class="dot"></span>
+        <span id="headerRoomCode">------</span>
+      </span>
+      <button class="btn-icon" id="headerCamBtn" data-tip="Camera" aria-label="Camera" hidden>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg>
+      </button>
+      <button class="btn-icon" id="headerExitBtn" data-tip="Leave room" aria-label="Leave room" hidden>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="screen-wrap">
+    <!-- ============================================================
+         1. HOME
+         ============================================================ -->
+    <section class="screen active" id="screen-home" aria-label="Home">
+      <div class="home-inner">
+        <div class="home-copy">
+          <div class="eyebrow">Bluebooth</div>
+          <h1 class="title">Take photos together.</h1>
+          <p class="subtitle">Start a room and share the code, or join one your partner made. Line up your shots side by side while you&apos;re on a call.</p>
+          <div class="home-actions">
+            <button class="btn btn-primary" onclick="goCreate()">Create room</button>
+            <button class="btn btn-secondary" onclick="showScreen('join')">Join room</button>
+          </div>
+          <div class="home-prev">
+            <button onclick="openPreviousResult()">Open previous result</button>
+          </div>
+        </div>
+        <div class="home-preview">
+          <div class="mini-strip" aria-hidden="true">
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cap">Room · Bluebooth</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         2. CREATE ROOM
+         ============================================================ -->
+    <section class="screen" id="screen-create" aria-label="Create room">
+      <div class="center-col">
+        <button class="btn btn-ghost back-link" onclick="showScreen('home')">&larr; Back</button>
+        <div class="card" style="padding:24px; margin-top:8px;">
+          <h2 class="section-title">Create a room</h2>
+          <p class="subtitle" style="margin-bottom:20px;">Set yourself up, then share the code.</p>
+
+          <div id="createForm">
+            <div class="field">
+              <label for="createRoomName">Room name (optional)</label>
+              <input class="input" id="createRoomName" placeholder="Sunday shoot" maxlength="24" />
+            </div>
+            <div class="field">
+              <label for="createUserName">Your name</label>
+              <input class="input" id="createUserName" placeholder="You" maxlength="20" />
+              <div class="field-error" id="createNameErr">Please enter a name.</div>
+            </div>
+            <div class="toggle-row">
+              <span class="label">Turn on camera right away</span>
+              <button class="toggle" id="createCamToggle" role="switch" aria-checked="true" aria-label="Turn on camera right away" onclick="toggleAttr(this)"></button>
+            </div>
+            <button class="btn btn-primary btn-block" style="margin-top:18px;" onclick="createRoom()">Create room</button>
+          </div>
+
+          <!-- Result shown after creation -->
+          <div id="createResult" hidden>
+            <div class="status-line"><span class="dot"></span> Room created</div>
+            <div class="code-display">
+              <div>
+                <div class="label-sm">Room code</div>
+                <div class="code" id="createdCode">BLU000</div>
+              </div>
+              <button class="btn-icon" style="margin-left:auto;" data-tip="Copy code" aria-label="Copy room code" onclick="copyText(document.getElementById('createdCode').textContent,'Room code copied')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+            </div>
+            <div class="field">
+              <label>Room link</label>
+              <div style="display:flex; gap:8px;">
+                <input class="input" id="createdLink" readonly />
+                <button class="btn btn-secondary" onclick="copyText(document.getElementById('createdLink').value,'Link copied')">Copy</button>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-block" style="margin-top:12px;" onclick="enterWaiting()">Continue to waiting room</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         3. JOIN ROOM
+         ============================================================ -->
+    <section class="screen" id="screen-join" aria-label="Join room">
+      <div class="center-col">
+        <button class="btn btn-ghost back-link" onclick="showScreen('home')">&larr; Back</button>
+        <div class="card" style="padding:24px; margin-top:8px;">
+          <h2 class="section-title">Join a room</h2>
+          <p class="subtitle" style="margin-bottom:20px;">Enter the 6-character code your partner shared.</p>
+          <div class="field">
+            <label for="joinCode">Room code</label>
+            <input class="input code-input" id="joinCode" placeholder="BLU482" maxlength="6" autocomplete="off" />
+            <div class="field-error" id="joinCodeErr">Enter all 6 characters.</div>
+          </div>
+          <div class="field">
+            <label for="joinUserName">Your name</label>
+            <input class="input" id="joinUserName" placeholder="You" maxlength="20" />
+          </div>
+          <button class="btn btn-primary btn-block" id="joinBtn" onclick="joinRoom()">Join room</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         4. WAITING ROOM
+         ============================================================ -->
+    <section class="screen" id="screen-waiting" aria-label="Waiting room">
+      <div class="center-col" style="max-width:640px;">
+        <div class="card" style="padding:22px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div>
+              <h2 class="section-title">Waiting room</h2>
+              <p class="hint">Share the code so your partner can join.</p>
+            </div>
+            <div class="code-display" style="margin:0; padding:10px 14px;">
+              <div class="code" id="waitingCode" style="font-size:20px;">BLU000</div>
+              <button class="btn-icon" data-tip="Copy code" aria-label="Copy room code" onclick="copyText(document.getElementById('waitingCode').textContent,'Room code copied')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="participants">
+            <div class="participant connected" id="pCard0">
+              <div class="p-cam" id="pCam0"><div class="placeholder">Camera preview</div></div>
+              <div class="p-meta">
+                <span class="p-name" id="pName0">You</span>
+                <span class="p-status connected">Connected</span>
+              </div>
+            </div>
+            <div class="participant" id="pCard1">
+              <div class="p-cam" id="pCam1"><div class="placeholder">Waiting for partner</div></div>
+              <div class="p-meta">
+                <span class="p-name">Partner</span>
+                <span class="p-status waiting" id="pStatus1">Waiting</span>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-secondary btn-block" id="simJoinBtn" onclick="simulatePartner()">Simulate partner joining</button>
+          <div style="display:flex; gap:10px; margin-top:12px;">
+            <button class="btn btn-ghost" onclick="leaveRoom()">Leave room</button>
+            <button class="btn btn-primary" style="margin-left:auto;" onclick="showScreen('setup')">Set up photobooth</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         5. BOOTH SETUP
+         ============================================================ -->
+    <section class="screen" id="screen-setup" aria-label="Booth setup">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; gap:12px; flex-wrap:wrap;">
+        <div>
+          <h2 class="section-title">Set up your booth</h2>
+          <p class="hint">Pick a layout and frame, then dial in the camera.</p>
+        </div>
+        <button class="btn btn-primary" onclick="startSession()">Start session</button>
+      </div>
+
+      <div class="steps" role="tablist" aria-label="Setup steps">
+        <button class="step-btn active" role="tab" data-step="layout" onclick="setStep('layout')"><span class="num">1</span> Layout</button>
+        <button class="step-btn" role="tab" data-step="frame" onclick="setStep('frame')"><span class="num">2</span> Frame</button>
+        <button class="step-btn" role="tab" data-step="camera" onclick="setStep('camera')"><span class="num">3</span> Camera</button>
+        <button class="step-btn" role="tab" data-step="timer" onclick="setStep('timer')"><span class="num">4</span> Timer</button>
+      </div>
+
+      <div class="setup-layout">
+        <!-- Preview -->
+        <div class="setup-preview-col">
+          <div class="preview-stage">
+            <div class="comp" id="compPreview" role="img" aria-label="Live layout preview"></div>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <span class="hint" id="previewMeta">—</span>
+            <div class="segmented" style="margin-left:auto;" aria-label="Camera source mode">
+              <button data-mode="split" onclick="setCamMode('split')">Split</button>
+              <button data-mode="alternate" onclick="setCamMode('alternate')">Alternate</button>
+              <button data-mode="user" class="active" onclick="setCamMode('user')">You</button>
+              <button data-mode="partner" onclick="setCamMode('partner')">Partner</button>
+            </div>
+            <button class="btn-icon" data-tip="Swap positions" aria-label="Swap camera positions" onclick="swapCams()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Panel -->
+        <div class="setup-panel-col">
+          <div class="mobile-tabs" id="mobileTabs">
+            <button class="chip active" data-step="layout" onclick="setStep('layout')">Layout</button>
+            <button class="chip" data-step="frame" onclick="setStep('frame')">Frame</button>
+            <button class="chip" data-step="camera" onclick="setStep('camera')">Camera</button>
+            <button class="chip" data-step="timer" onclick="setStep('timer')">Timer</button>
+          </div>
+
+          <div class="panel">
+            <!-- LAYOUT -->
+            <div class="panel-section active" id="panel-layout">
+              <div class="panel-head"><h3 style="font-size:16px;">Choose a layout</h3></div>
+              <div class="chips grid-filter" id="gridFilters">
+                <button class="chip active" data-cat="all" onclick="filterGrids('all',this)">All</button>
+                <button class="chip" data-cat="instagram" onclick="filterGrids('instagram',this)">Instagram</button>
+                <button class="chip" data-cat="portrait" onclick="filterGrids('portrait',this)">Portrait</button>
+                <button class="chip" data-cat="landscape" onclick="filterGrids('landscape',this)">Landscape</button>
+                <button class="chip" data-cat="print" onclick="filterGrids('print',this)">Print</button>
+              </div>
+              <div class="grid-list" id="gridList"></div>
+              <hr class="divider" />
+              <div class="slider-row">
+                <div class="slider-head"><span>Gap</span><span class="val" id="gapVal">8</span></div>
+                <input type="range" id="gapRange" min="0" max="5" step="1" value="2" oninput="setGap(this.value)" aria-label="Gap size" />
+              </div>
+              <div class="slider-row">
+                <div class="slider-head"><span>Outer padding</span><span class="val" id="padVal">16</span></div>
+                <input type="range" id="padRange" min="0" max="4" step="1" value="2" oninput="setPad(this.value)" aria-label="Outer padding" />
+              </div>
+              <div class="slider-row">
+                <div class="slider-head"><span>Corner radius</span><span class="val" id="radVal">8</span></div>
+                <input type="range" id="radRange" min="0" max="3" step="1" value="1" oninput="setRad(this.value)" aria-label="Corner radius" />
+              </div>
+              <div class="field" style="margin-top:8px;">
+                <label for="canvasBg">Canvas background</label>
+                <input type="color" class="input" id="canvasBg" value="#ffffff" style="height:40px; padding:4px;" oninput="setCanvasBg(this.value)" />
+              </div>
+            </div>
+
+            <!-- FRAME -->
+            <div class="panel-section" id="panel-frame">
+              <div class="panel-head"><h3 style="font-size:16px;">Select a frame</h3></div>
+              <div class="frame-list" id="frameList"></div>
+              <hr class="divider" />
+              <h4 style="font-size:14px; font-weight:700; margin-bottom:10px;">Upload your own frame</h4>
+              <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload a transparent frame">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M12 12v9"/><path d="m8 17 4-4 4 4"/></svg>
+                <div class="dz-title">Drop a transparent frame here</div>
+                <div class="dz-sub">PNG or WebP</div>
+                <input type="file" id="frameFile" accept="image/png,image/webp" class="sr-only" aria-label="Choose frame file" />
+              </div>
+              <div id="frameFileInfo" hidden></div>
+              <div id="customFrameControls" hidden>
+                <hr class="divider" />
+                <div class="slider-row">
+                  <div class="slider-head"><span>Opacity</span><span class="val" id="cfOpacityVal">100%</span></div>
+                  <input type="range" id="cfOpacity" min="0" max="100" value="100" oninput="setCustomFrame('opacity',this.value)" aria-label="Frame opacity" />
+                </div>
+                <div class="slider-row">
+                  <div class="slider-head"><span>Scale</span><span class="val" id="cfScaleVal">100%</span></div>
+                  <input type="range" id="cfScale" min="50" max="150" value="100" oninput="setCustomFrame('scale',this.value)" aria-label="Frame scale" />
+                </div>
+                <div class="slider-row">
+                  <div class="slider-head"><span>Position X</span><span class="val" id="cfXVal">0</span></div>
+                  <input type="range" id="cfX" min="-50" max="50" value="0" oninput="setCustomFrame('x',this.value)" aria-label="Frame position X" />
+                </div>
+                <div class="slider-row">
+                  <div class="slider-head"><span>Position Y</span><span class="val" id="cfYVal">0</span></div>
+                  <input type="range" id="cfY" min="-50" max="50" value="0" oninput="setCustomFrame('y',this.value)" aria-label="Frame position Y" />
+                </div>
+                <div class="field">
+                  <label for="cfFit">Fit mode</label>
+                  <select class="select" id="cfFit" onchange="setCustomFrame('fit',this.value)">
+                    <option value="cover">Cover</option>
+                    <option value="contain">Contain</option>
+                    <option value="stretch">Stretch</option>
+                  </select>
+                </div>
+                <div class="toggle-row">
+                  <span class="label">Frame in front of photos</span>
+                  <button class="toggle" id="cfFront" role="switch" aria-checked="true" aria-label="Frame in front of photos" onclick="toggleAttr(this); setCustomFrame('front', this.getAttribute('aria-checked'))"></button>
+                </div>
+              </div>
+              <hr class="divider" />
+              <h4 style="font-size:14px; font-weight:700; margin-bottom:10px;">Frame details</h4>
+              <div class="field">
+                <label for="frameCaption">Caption</label>
+                <input class="input" id="frameCaption" placeholder="Room BLU482" maxlength="30" oninput="setFrameOpt('caption',this.value)" />
+              </div>
+              <div class="field">
+                <label for="frameBorderColor">Border color</label>
+                <input type="color" class="input" id="frameBorderColor" value="#1f5fad" style="height:40px; padding:4px;" oninput="setFrameOpt('borderColor',this.value)" />
+              </div>
+              <div class="slider-row">
+                <div class="slider-head"><span>Border thickness</span><span class="val" id="frameBorderVal">0</span></div>
+                <input type="range" id="frameBorder" min="0" max="24" value="0" oninput="setFrameOpt('borderWidth',this.value)" aria-label="Border thickness" />
+              </div>
+              <div class="toggle-row">
+                <span class="label">Show date</span>
+                <button class="toggle" id="frameDate" role="switch" aria-checked="false" aria-label="Show date" onclick="toggleAttr(this); setFrameOpt('showDate', this.getAttribute('aria-checked'))"></button>
+              </div>
+              <div class="toggle-row">
+                <span class="label">Show room name</span>
+                <button class="toggle" id="frameRoom" role="switch" aria-checked="false" aria-label="Show room name" onclick="toggleAttr(this); setFrameOpt('showRoom', this.getAttribute('aria-checked'))"></button>
+              </div>
+            </div>
+
+            <!-- CAMERA -->
+            <div class="panel-section" id="panel-camera">
+              <div class="panel-head"><h3 style="font-size:16px;">Camera</h3>
+                <button class="btn btn-secondary" style="padding:6px 12px;" onclick="startCamera()">Enable</button>
+              </div>
+              <div id="cameraError" class="card" style="padding:12px; background:var(--error-bg); border-color:var(--error); color:var(--error); font-size:13px; margin-bottom:12px; display:none;">
+                <div id="cameraErrorMsg">Camera unavailable</div>
+                <button class="btn btn-secondary" style="margin-top:8px; padding:6px 12px;" onclick="startCamera()">Try camera again</button>
+              </div>
+              <div class="field">
+                <label for="camDevice">Camera device</label>
+                <select class="select" id="camDevice" onchange="switchCamera(this.value)"><option>Default camera</option></select>
+              </div>
+              <div class="toggle-row">
+                <span class="label">Mirror</span>
+                <button class="toggle" id="camMirror" role="switch" aria-checked="true" aria-label="Mirror camera" onclick="toggleAttr(this); setCam('mirror', this.getAttribute('aria-checked')==='true'); renderPreview()"></button>
+              </div>
+              <div class="field">
+                <label for="camFit">Fit</label>
+                <select class="select" id="camFit" onchange="setCam('fit', this.value); renderPreview()">
+                  <option value="cover">Cover</option>
+                  <option value="contain">Contain</option>
+                </select>
+              </div>
+              <hr class="divider" />
+              <h4 style="font-size:14px; font-weight:700; margin-bottom:10px;">Filters</h4>
+              <div class="filter-list" id="filterList"></div>
+              <hr class="divider" />
+              <div class="slider-row">
+                <div class="slider-head"><span>Brightness</span><span class="val" id="briVal">100%</span></div>
+                <input type="range" id="briRange" min="50" max="150" value="100" oninput="setCam('brightness', this.value/100); document.getElementById('briVal').textContent=this.value+'%'; renderPreview()" aria-label="Brightness" />
+              </div>
+              <div class="slider-row">
+                <div class="slider-head"><span>Contrast</span><span class="val" id="conVal">100%</span></div>
+                <input type="range" id="conRange" min="50" max="150" value="100" oninput="setCam('contrast', this.value/100); document.getElementById('conVal').textContent=this.value+'%'; renderPreview()" aria-label="Contrast" />
+              </div>
+              <div class="slider-row">
+                <div class="slider-head"><span>Saturation</span><span class="val" id="satVal">100%</span></div>
+                <input type="range" id="satRange" min="0" max="200" value="100" oninput="setCam('saturation', this.value/100); document.getElementById('satVal').textContent=this.value+'%'; renderPreview()" aria-label="Saturation" />
+              </div>
+              <div class="slider-row">
+                <div class="slider-head"><span>Warmth</span><span class="val" id="warmVal">0</span></div>
+                <input type="range" id="warmRange" min="-50" max="50" value="0" oninput="setCam('warmth', +this.value); document.getElementById('warmVal').textContent=this.value; renderPreview()" aria-label="Warmth" />
+              </div>
+              <div class="slider-row">
+                <div class="slider-head"><span>Zoom</span><span class="val" id="zoomVal">100%</span></div>
+                <input type="range" id="zoomRange" min="100" max="180" value="100" oninput="setCam('zoom', this.value/100); document.getElementById('zoomVal').textContent=this.value+'%'; renderPreview()" aria-label="Zoom" />
+              </div>
+              <button class="btn btn-secondary btn-block" onclick="resetCamAdjust()">Reset adjustments</button>
+              <hr class="divider" />
+              <button class="btn btn-secondary btn-block" id="demoPartnerBtn" onclick="toggleDemoPartner()">Use demo partner feed</button>
+            </div>
+
+            <!-- TIMER -->
+            <div class="panel-section" id="panel-timer">
+              <div class="panel-head"><h3 style="font-size:16px;">Timer</h3></div>
+              <div class="field">
+                <label>Countdown</label>
+                <div class="chips" id="timerChips">
+                  <button class="chip" data-t="3" onclick="setTimer(3,this)">3 seconds</button>
+                  <button class="chip active" data-t="5" onclick="setTimer(5,this)">5 seconds</button>
+                  <button class="chip" data-t="10" onclick="setTimer(10,this)">10 seconds</button>
+                </div>
+              </div>
+              <div class="field">
+                <label>Delay between shots</label>
+                <div class="chips" id="delayChips">
+                  <button class="chip" data-d="1" onclick="setDelay(1,this)">1 second</button>
+                  <button class="chip active" data-d="2" onclick="setDelay(2,this)">2 seconds</button>
+                  <button class="chip" data-d="3" onclick="setDelay(3,this)">3 seconds</button>
+                </div>
+              </div>
+              <div class="toggle-row">
+                <span class="label">Countdown sound</span>
+                <button class="toggle" id="soundToggle" role="switch" aria-checked="true" aria-label="Countdown sound" onclick="toggleAttr(this); appState.timerSound=this.getAttribute('aria-checked')==='true'"></button>
+              </div>
+              <div class="toggle-row">
+                <span class="label">Flash effect</span>
+                <button class="toggle" id="flashToggle" role="switch" aria-checked="true" aria-label="Flash effect" onclick="toggleAttr(this); appState.flash=this.getAttribute('aria-checked')==='true'"></button>
+              </div>
+              <hr class="divider" />
+              <div class="field">
+                <label>Retake mode</label>
+                <div class="segmented" id="retakeMode" style="width:100%;">
+                  <button class="active" data-r="individual" onclick="setRetakeMode('individual',this)" style="flex:1;">Individual photo</button>
+                  <button data-r="all" onclick="setRetakeMode('all',this)" style="flex:1;">Restart all</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-bar">
+        <button class="btn btn-secondary" onclick="leaveRoom()">Leave</button>
+        <button class="btn btn-primary" onclick="startSession()">Start session</button>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         6. PHOTO SESSION
+         ============================================================ -->
+    <section class="screen" id="screen-session" aria-label="Photo session">
+      <div class="session-wrap">
+        <div class="session-head">
+          <span class="session-progress" id="sessionProgress">Photo 1 of 4</span>
+          <span class="p-status connected" id="sessionPartner">Partner connected</span>
+        </div>
+        <div class="session-stage" id="sessionStage">
+          <video id="sessionVideo" autoplay playsinline muted></video>
+          <div class="countdown-num" id="countdownNum" hidden></div>
+          <div class="flash" id="sessionFlash"></div>
+        </div>
+        <div class="session-thumbs" id="sessionThumbs"></div>
+        <div class="session-controls">
+          <button class="btn btn-secondary" id="pauseBtn" onclick="togglePause()">Pause</button>
+          <button class="btn btn-danger" onclick="cancelSession()">Cancel</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         7. REVIEW PHOTOS
+         ============================================================ -->
+    <section class="screen" id="screen-review" aria-label="Review photos">
+      <div style="max-width:1000px; margin:0 auto 16px; width:100%; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div>
+          <h2 class="section-title">Review your photos</h2>
+          <p class="hint">Retake any shot you&apos;re not happy with.</p>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-secondary" onclick="setStep('layout'); showScreen('setup')">Edit layout</button>
+          <button class="btn btn-secondary" onclick="setStep('frame'); showScreen('setup')">Edit frame</button>
+          <button class="btn btn-danger" onclick="restartSession()">Restart session</button>
+          <button class="btn btn-primary" onclick="buildFinal()">Continue</button>
+        </div>
+      </div>
+      <div class="review-wrap">
+        <div class="review-preview">
+          <div class="preview-stage" style="min-height:auto; width:100%;">
+            <div class="comp" id="reviewComp" role="img" aria-label="Photo layout preview"></div>
+          </div>
+        </div>
+        <div class="review-thumbs" id="reviewThumbs"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         8. FINAL RESULT
+         ============================================================ -->
+    <section class="screen" id="screen-final" aria-label="Final result">
+      <div class="final-wrap">
+        <h2 class="section-title">Your photobooth</h2>
+        <div class="final-canvas-box">
+          <canvas id="finalCanvas" aria-label="Final composed photobooth image"></canvas>
+        </div>
+        <div class="final-meta" id="finalMeta">—</div>
+        <div class="final-actions">
+          <button class="btn btn-primary" onclick="downloadFinal()">Download photo</button>
+          <button class="btn btn-secondary" onclick="saveResult()">Save result</button>
+          <button class="btn btn-secondary" onclick="createAnother()">Create another</button>
+          <button class="btn btn-ghost" onclick="showScreen('waiting')">Back to room</button>
+        </div>
+        <span class="saved-note" id="savedNote">Saved to this browser</span>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ============================================================
+     PREVIOUS RESULT MODAL
+     ============================================================ -->
+<div class="modal-backdrop" id="prevModal" role="dialog" aria-modal="true" aria-labelledby="prevModalTitle">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="prevModalTitle">Previous result</h3>
+      <button class="btn-icon" aria-label="Close" onclick="closeModal('prevModal')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="prevModalBody"></div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
+
+<script>
+/* ============================================================
+   BLUEBOOTH — vanilla photobooth mockup
+   Modules: state · navigation · grid presets · frames ·
+            camera · rendering · session · canvas · storage
+   Backend is simulated on the frontend. Supabase TODOs mark
+   where a real integration would plug in.
+   ============================================================ */
+
+/* ---------- CENTRAL STATE ---------- */
+const appState = {
+  currentScreen: "home",
+  roomCode: "",
+  roomName: "",
+  userName: "You",
+  participants: [],           // {name, connected, isSelf}
+  selectedGrid: "ig-square-4",
+  selectedFrame: "clean-white",
+  customFrame: null,          // {img, opacity, scale, x, y, fit, front, name}
+  frameOpts: { caption: "", borderColor: "#1f5fad", borderWidth: 0, showDate: false, showRoom: false },
+  layout: { gap: 8, pad: 16, radius: 8, bg: "#ffffff" },
+  camMode: "user",            // split | alternate | user | partner
+  swap: false,
+  cameraSettings: { mirror: true, brightness: 1, contrast: 1, saturation: 1, warmth: 0, zoom: 1, fit: "cover", filter: "original" },
+  timer: 5,
+  shotDelay: 2,
+  timerSound: true,
+  flash: true,
+  retakeMode: "individual",
+  capturedPhotos: [],         // dataURLs
+  finalImage: null,
+  demoPartner: false,
+};
+
+/* ---------- OPTION TABLES ---------- */
+const GAP_STEPS = [0, 4, 8, 12, 16, 24];
+const PAD_STEPS = [0, 8, 16, 24, 32];
+const RAD_STEPS = [0, 8, 16, 24];
+
+/* ============================================================
+   GRID PRESETS — 30 distinct layouts driven by config.
+   `areas` uses CSS grid-template-areas; `cols`/`rows` define
+   the track counts. A single renderer reads these presets.
+   ============================================================ */
+const gridPresets = [
+  // ---- INSTAGRAM ----
+  { id:"ig-square-1", name:"Square Single", category:"instagram", ratio:"1:1", out:[1080,1080], cols:1, rows:1, areas:[["a"]] },
+  { id:"ig-square-2", name:"Square 2", category:"instagram", ratio:"1:1", out:[1080,1080], cols:1, rows:2, areas:[["a"],["b"]] },
+  { id:"ig-square-4", name:"Square 4", category:"instagram", ratio:"1:1", out:[1080,1080], cols:2, rows:2, areas:[["a","b"],["c","d"]] },
+  { id:"ig-portrait-1", name:"IG Portrait", category:"instagram", ratio:"4:5", out:[1080,1350], cols:1, rows:1, areas:[["a"]] },
+  { id:"ig-portrait-2", name:"Portrait 2", category:"instagram", ratio:"4:5", out:[1080,1350], cols:1, rows:2, areas:[["a"],["b"]] },
+  { id:"ig-portrait-3", name:"Portrait 3", category:"instagram", ratio:"4:5", out:[1080,1350], cols:1, rows:3, areas:[["a"],["b"],["c"]] },
+  { id:"ig-portrait-4", name:"Portrait 4", category:"instagram", ratio:"4:5", out:[1080,1350], cols:2, rows:2, areas:[["a","b"],["c","d"]] },
+  { id:"ig-story-1", name:"Story", category:"instagram", ratio:"9:16", out:[1080,1920], cols:1, rows:1, areas:[["a"]] },
+  { id:"ig-story-2", name:"Story 2", category:"instagram", ratio:"9:16", out:[1080,1920], cols:1, rows:2, areas:[["a"],["b"]] },
+  { id:"ig-story-3", name:"Story 3", category:"instagram", ratio:"9:16", out:[1080,1920], cols:1, rows:3, areas:[["a"],["b"],["c"]] },
+  { id:"ig-story-4", name:"Story 4", category:"instagram", ratio:"9:16", out:[1080,1920], cols:1, rows:4, areas:[["a"],["b"],["c"],["d"]] },
+  // ---- PORTRAIT ----
+  { id:"strip-2", name:"Classic Strip 2", category:"portrait", ratio:"1:2", out:[600,1200], cols:1, rows:2, areas:[["a"],["b"]] },
+  { id:"strip-3", name:"Classic Strip 3", category:"portrait", ratio:"1:2.6", out:[600,1560], cols:1, rows:3, areas:[["a"],["b"],["c"]] },
+  { id:"strip-4", name:"Classic Strip 4", category:"portrait", ratio:"1:2", out:[900,1800], cols:1, rows:4, areas:[["a"],["b"],["c"],["d"]] },
+  { id:"tall-6", name:"Tall Grid 6", category:"portrait", ratio:"2:3", out:[1000,1500], cols:2, rows:3, areas:[["a","b"],["c","d"],["e","f"]] },
+  { id:"pc-2x2", name:"Collage 2×2", category:"portrait", ratio:"4:5", out:[1080,1350], cols:2, rows:2, areas:[["a","b"],["c","d"]] },
+  { id:"pc-2x3", name:"Collage 2×3", category:"portrait", ratio:"2:3", out:[1000,1500], cols:2, rows:3, areas:[["a","b"],["c","d"],["e","f"]] },
+  { id:"large-top-2", name:"Large Top · 2 Small", category:"portrait", ratio:"4:5", out:[1080,1350], cols:2, rows:2, areas:[["a","a"],["b","c"]] },
+  { id:"2-small-large-bottom", name:"2 Small · Large Bottom", category:"portrait", ratio:"4:5", out:[1080,1350], cols:2, rows:2, areas:[["a","b"],["c","c"]] },
+  { id:"editorial-portrait", name:"Editorial Portrait", category:"portrait", ratio:"4:5", out:[1080,1350], cols:3, rows:3, areas:[["a","a","b"],["a","a","c"],["d","d","d"]] },
+  // ---- LANDSCAPE ----
+  { id:"land-1", name:"Landscape Single", category:"landscape", ratio:"16:9", out:[1600,900], cols:1, rows:1, areas:[["a"]] },
+  { id:"land-2", name:"Landscape 2", category:"landscape", ratio:"16:9", out:[1600,900], cols:2, rows:1, areas:[["a","b"]] },
+  { id:"land-3", name:"Landscape 3", category:"landscape", ratio:"16:9", out:[1600,900], cols:3, rows:1, areas:[["a","b","c"]] },
+  { id:"land-2x2", name:"Landscape 2×2", category:"landscape", ratio:"16:9", out:[1600,900], cols:2, rows:2, areas:[["a","b"],["c","d"]] },
+  { id:"wide-main-2-side", name:"Wide Main · 2 Side", category:"landscape", ratio:"16:9", out:[1600,900], cols:3, rows:2, areas:[["a","a","b"],["a","a","c"]] },
+  { id:"cinematic-3", name:"Cinematic 3 Panel", category:"landscape", ratio:"2.4:1", out:[1920,800], cols:3, rows:1, areas:[["a","b","c"]] },
+  { id:"editorial-landscape", name:"Editorial Landscape", category:"landscape", ratio:"16:9", out:[1600,900], cols:3, rows:2, areas:[["a","b","b"],["c","d","b"]] },
+  // ---- PRINT / POLAROID ----
+  { id:"polaroid-1", name:"Single Polaroid", category:"print", ratio:"5:6", out:[1000,1200], cols:1, rows:1, areas:[["a"]] },
+  { id:"polaroid-2", name:"Double Polaroid", category:"print", ratio:"1:1.2", out:[1000,1200], cols:1, rows:2, areas:[["a"],["b"]] },
+  { id:"polaroid-4", name:"Four Polaroid", category:"print", ratio:"1:1", out:[1200,1200], cols:2, rows:2, areas:[["a","b"],["c","d"]] },
+  { id:"print-strip-2x2", name:"Photo Strip 2×2", category:"print", ratio:"1:1", out:[1200,1200], cols:2, rows:2, areas:[["a","b"],["c","d"]] },
+  { id:"print-strip-2x3", name:"Photo Strip 2×3", category:"print", ratio:"2:3", out:[1000,1500], cols:2, rows:3, areas:[["a","b"],["c","d"],["e","f"]] },
+  { id:"contact-3x3", name:"Contact Sheet 3×3", category:"print", ratio:"1:1", out:[1200,1200], cols:3, rows:3, areas:[["a","b","c"],["d","e","f"],["g","h","i"]] },
+];
+
+/* Count distinct slots a preset uses */
+function slotCount(p){
+  const s = new Set();
+  p.areas.forEach(r => r.forEach(a => s.add(a)));
+  return s.size;
+}
+/* Ordered unique slot labels */
+function slotLabels(p){
+  const seen = [];
+  p.areas.forEach(r => r.forEach(a => { if(!seen.includes(a)) seen.push(a); }));
+  return seen;
+}
+
+/* ============================================================
+   FRAME PRESETS — 12 tasteful built-in frames.
+   Each returns CSS applied to the composition + canvas hints.
+   ============================================================ */
+const framePresets = [
+  { id:"clean-white", name:"Plain White", bg:"#ffffff", border:0, borderColor:"#ffffff", pad:0 },
+  { id:"powder-blue", name:"Powder Blue", bg:"#EAF5FF", border:0, borderColor:"#EAF5FF", pad:24 },
+  { id:"thin-navy", name:"Thin Navy", bg:"#ffffff", border:6, borderColor:"#1F5FAD", pad:20 },
+  { id:"double-line", name:"Double Line", bg:"#ffffff", border:3, borderColor:"#4D9FFF", pad:22, inner:true },
+  { id:"soft-paper", name:"Soft Paper", bg:"#F7F3EC", border:0, borderColor:"#F7F3EC", pad:28 },
+  { id:"film-edge", name:"Film Edge", bg:"#17243A", border:0, borderColor:"#17243A", pad:26, film:true },
+  { id:"minimal-caption", name:"Minimal Caption", bg:"#ffffff", border:0, borderColor:"#fff", pad:20, captionArea:true },
+  { id:"bottom-date", name:"Bottom Date", bg:"#ffffff", border:0, borderColor:"#fff", pad:20, dateArea:true },
+  { id:"top-label", name:"Top Label", bg:"#ffffff", border:0, borderColor:"#fff", pad:20, topLabel:true },
+  { id:"rounded-print", name:"Rounded Print", bg:"#EAF5FF", border:0, borderColor:"#EAF5FF", pad:26, roundExtra:true },
+  { id:"pale-check", name:"Pale Blue Check", bg:"#DCEEFF", border:0, borderColor:"#DCEEFF", pad:26, check:true },
+  { id:"editorial-num", name:"Editorial Numbers", bg:"#ffffff", border:0, borderColor:"#fff", pad:22, numbering:true },
+];
+
+/* ============================================================
+   CAMERA FILTERS — natural presets (CSS filter strings)
+   ============================================================ */
+const cameraFilters = [
+  { id:"original", name:"Original", css:"" },
+  { id:"soft", name:"Soft", css:"brightness(1.05) contrast(0.95) saturate(0.95)" },
+  { id:"cool", name:"Cool", css:"saturate(1.05) hue-rotate(-6deg) brightness(1.02)" },
+  { id:"warm", name:"Warm", css:"sepia(0.12) saturate(1.1) brightness(1.03)" },
+  { id:"clean", name:"Clean", css:"contrast(1.08) brightness(1.03)" },
+  { id:"faded", name:"Faded", css:"contrast(0.9) brightness(1.08) saturate(0.85)" },
+  { id:"mono", name:"Mono", css:"grayscale(1) contrast(1.05)" },
+  { id:"film", name:"Film", css:"sepia(0.18) contrast(1.05) saturate(1.05) brightness(0.98)" },
+];
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+function showScreen(name){
+  appState.currentScreen = name;
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  const el = document.getElementById("screen-" + name);
+  if(el) el.classList.add("active");
+  // header room pill visible once in a room
+  const inRoom = ["waiting","setup","session","review","final"].includes(name);
+  document.getElementById("headerRoom").classList.toggle("show", inRoom && !!appState.roomCode);
+  document.getElementById("headerCamBtn").hidden = !inRoom;
+  document.getElementById("headerExitBtn").hidden = !inRoom;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  if(name === "setup") renderPreview();
+}
+
+/* Small helper: flip aria-checked on a toggle button */
+function toggleAttr(btn){
+  const now = btn.getAttribute("aria-checked") === "true";
+  btn.setAttribute("aria-checked", (!now).toString());
+}
+
+/* ============================================================
+   ROOM: create / join / waiting (simulated)
+   ============================================================ */
+function randomCode(){
+  const letters = "ABCDEFGHJKLMNPRSTUVWXYZ";
+  const digits = "0123456789";
+  let code = "BLU";
+  for(let i=0;i<3;i++) code += digits[Math.floor(Math.random()*digits.length)];
+  // occasionally include a letter for variety
+  if(Math.random() > 0.5){
+    code = letters[Math.floor(Math.random()*letters.length)] +
+           letters[Math.floor(Math.random()*letters.length)] +
+           letters[Math.floor(Math.random()*letters.length)];
+    for(let i=0;i<3;i++) code += digits[Math.floor(Math.random()*digits.length)];
+  }
+  return code.slice(0,6).toUpperCase();
+}
+
+function goCreate(){
+  document.getElementById("createForm").hidden = false;
+  document.getElementById("createResult").hidden = true;
+  showScreen("create");
+}
+
+function createRoom(){
+  const name = document.getElementById("createUserName").value.trim();
+  const err = document.getElementById("createNameErr");
+  if(!name){ err.classList.add("show"); return; }
+  err.classList.remove("show");
+
+  appState.userName = name;
+  appState.roomName = document.getElementById("createRoomName").value.trim() || "Bluebooth";
+  appState.roomCode = randomCode();
+  appState.participants = [
+    { name: name, connected: true, isSelf: true },
+    { name: "Partner", connected: false, isSelf: false },
+  ];
+  // TODO: Replace with Supabase room creation
+  // await supabase.from('rooms').insert({ code: appState.roomCode, name: appState.roomName })
+
+  document.getElementById("createdCode").textContent = appState.roomCode;
+  document.getElementById("createdLink").value = "https://bluebooth.app/r/" + appState.roomCode;
+  document.getElementById("createForm").hidden = true;
+  document.getElementById("createResult").hidden = false;
+
+  const startCam = document.getElementById("createCamToggle").getAttribute("aria-checked") === "true";
+  if(startCam) startCamera();
+}
+
+function enterWaiting(){
+  syncRoomUI();
+  showScreen("waiting");
+}
+
+function joinRoom(){
+  const codeEl = document.getElementById("joinCode");
+  const code = codeEl.value.trim().toUpperCase();
+  const err = document.getElementById("joinCodeErr");
+  if(code.length < 6){ err.classList.add("show"); return; }
+  err.classList.remove("show");
+
+  const name = document.getElementById("joinUserName").value.trim() || "You";
+  appState.userName = name;
+  appState.roomCode = code;
+  appState.roomName = "Bluebooth";
+  appState.participants = [
+    { name: name, connected: true, isSelf: true },
+    { name: "Partner", connected: true, isSelf: false }, // joining implies host present
+  ];
+
+  // TODO: Subscribe to room changes with Supabase Realtime
+  const btn = document.getElementById("joinBtn");
+  btn.disabled = true; btn.textContent = "Joining…";
+  setTimeout(() => {
+    btn.disabled = false; btn.textContent = "Join room";
+    syncRoomUI();
+    // partner is host — already connected
+    document.getElementById("pStatus1").className = "p-status connected";
+    document.getElementById("pStatus1").textContent = "Connected";
+    document.getElementById("pCard1").classList.add("connected");
+    document.getElementById("simJoinBtn").style.display = "none";
+    startCamera();
+    showScreen("waiting");
+    toast("Joined room " + code, "success");
+  }, 900);
+}
+
+function syncRoomUI(){
+  document.getElementById("headerRoomCode").textContent = appState.roomCode;
+  document.getElementById("waitingCode").textContent = appState.roomCode;
+  document.getElementById("pName0").textContent = appState.participants[0]?.name || "You";
+  document.getElementById("frameCaption").placeholder = "Room " + appState.roomCode;
+  // reset partner card if fresh room
+  if(!appState.participants[1]?.connected){
+    document.getElementById("pStatus1").className = "p-status waiting";
+    document.getElementById("pStatus1").textContent = "Waiting";
+    document.getElementById("pCard1").classList.remove("connected");
+    document.getElementById("simJoinBtn").style.display = "";
+  }
+}
+
+function simulatePartner(){
+  // TODO: Subscribe to room member changes with Supabase Realtime
+  appState.participants[1].connected = true;
+  document.getElementById("pStatus1").className = "p-status connected";
+  document.getElementById("pStatus1").textContent = "Connected";
+  document.getElementById("pCard1").classList.add("connected");
+  document.getElementById("headerRoom").classList.add("connected");
+  document.getElementById("simJoinBtn").style.display = "none";
+  // give partner a demo feed in the waiting card
+  const cam1 = document.getElementById("pCam1");
+  cam1.innerHTML = "";
+  cam1.appendChild(makeDemoFeed());
+  toast("Partner connected", "success");
+}
+
+function leaveRoom(){
+  stopCamera();
+  document.getElementById("headerRoom").classList.remove("connected");
+  appState.roomCode = "";
+  appState.participants = [];
+  showScreen("home");
+}
+
+/* ============================================================
+   CLIPBOARD + TOAST + MODAL
+   ============================================================ */
+function copyText(text, msg){
+  const done = () => toast(msg || "Copied", "success");
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else { fallbackCopy(text, done); }
+}
+function fallbackCopy(text, cb){
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand("copy"); } catch(e){}
+  document.body.removeChild(ta); cb && cb();
+}
+
+function toast(msg, type){
+  const wrap = document.getElementById("toastWrap");
+  const t = document.createElement("div");
+  t.className = "toast" + (type ? " " + type : "");
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 250); }, 2200);
+}
+
+function openModal(id){ document.getElementById(id).classList.add("open"); }
+function closeModal(id){ document.getElementById(id).classList.remove("open"); }
+
+/* ============================================================
+   SETUP STEPS + LAYOUT CONTROLS
+   ============================================================ */
+function setStep(step){
+  document.querySelectorAll(".step-btn").forEach(b => b.classList.toggle("active", b.dataset.step === step));
+  document.querySelectorAll("#mobileTabs .chip").forEach(b => b.classList.toggle("active", b.dataset.step === step));
+  document.querySelectorAll(".panel-section").forEach(p => p.classList.remove("active"));
+  document.getElementById("panel-" + step).classList.add("active");
+}
+
+function setGap(i){ appState.layout.gap = GAP_STEPS[+i]; document.getElementById("gapVal").textContent = appState.layout.gap; renderPreview(); }
+function setPad(i){ appState.layout.pad = PAD_STEPS[+i]; document.getElementById("padVal").textContent = appState.layout.pad; renderPreview(); }
+function setRad(i){ appState.layout.radius = RAD_STEPS[+i]; document.getElementById("radVal").textContent = appState.layout.radius; renderPreview(); }
+function setCanvasBg(c){ appState.layout.bg = c; renderPreview(); }
+
+/* ============================================================
+   GRID SELECTOR
+   ============================================================ */
+function buildGridList(filter){
+  const list = document.getElementById("gridList");
+  list.innerHTML = "";
+  gridPresets.filter(p => filter === "all" || p.category === filter).forEach(p => {
+    const card = document.createElement("button");
+    card.className = "grid-card" + (p.id === appState.selectedGrid ? " selected" : "");
+    card.setAttribute("aria-pressed", p.id === appState.selectedGrid);
+    card.onclick = () => selectGrid(p.id);
+
+    // Build accurate thumbnail using the same areas config
+    const thumb = document.createElement("div");
+    thumb.className = "grid-thumb";
+    thumb.style.gridTemplateColumns = `repeat(${p.cols}, 1fr)`;
+    thumb.style.gridTemplateRows = `repeat(${p.rows}, 1fr)`;
+    thumb.style.gridTemplateAreas = p.areas.map(r => `"${r.join(" ")}"`).join(" ");
+    slotLabels(p).forEach(lbl => {
+      const cell = document.createElement("div");
+      cell.className = "tcell";
+      cell.style.gridArea = lbl;
+      thumb.appendChild(cell);
+    });
+
+    const nm = document.createElement("div"); nm.className = "gname"; nm.textContent = p.name;
+    const meta = document.createElement("div"); meta.className = "gmeta"; meta.textContent = slotCount(p) + " · " + p.ratio;
+    const badge = document.createElement("span"); badge.className = "gbadge"; badge.textContent = p.category[0].toUpperCase();
+
+    card.append(thumb, nm, meta, badge);
+    list.appendChild(card);
+  });
+}
+function filterGrids(cat, btn){
+  document.querySelectorAll("#gridFilters .chip").forEach(c => c.classList.remove("active"));
+  btn.classList.add("active");
+  buildGridList(cat);
+}
+function selectGrid(id){
+  appState.selectedGrid = id;
+  document.querySelectorAll(".grid-card").forEach(c => c.classList.remove("selected"));
+  buildGridList(document.querySelector("#gridFilters .chip.active").dataset.cat);
+  renderPreview();
+}
+
+/* ============================================================
+   FRAME SELECTOR
+   ============================================================ */
+function buildFrameList(){
+  const list = document.getElementById("frameList");
+  list.innerHTML = "";
+  framePresets.forEach(f => {
+    const card = document.createElement("button");
+    card.className = "frame-card" + (f.id === appState.selectedFrame ? " selected" : "");
+    card.setAttribute("aria-pressed", f.id === appState.selectedFrame);
+    card.onclick = () => selectFrame(f.id);
+    const sw = document.createElement("div");
+    sw.className = "frame-swatch";
+    sw.style.background = f.bg;
+    if(f.border) sw.style.boxShadow = `inset 0 0 0 3px ${f.borderColor}`;
+    const inner = document.createElement("div"); inner.className = "inner";
+    sw.appendChild(inner);
+    const nm = document.createElement("div"); nm.className = "fname"; nm.textContent = f.name;
+    card.append(sw, nm);
+    list.appendChild(card);
+  });
+}
+function selectFrame(id){
+  appState.selectedFrame = id;
+  buildFrameList();
+  renderPreview();
+}
+function setFrameOpt(key, val){
+  if(key === "borderWidth"){ appState.frameOpts.borderWidth = +val; document.getElementById("frameBorderVal").textContent = val; }
+  else if(key === "showDate") appState.frameOpts.showDate = val === "true";
+  else if(key === "showRoom") appState.frameOpts.showRoom = val === "true";
+  else appState.frameOpts[key] = val;
+  renderPreview();
+}
+
+/* ============================================================
+   CUSTOM FRAME UPLOAD (PNG / WebP, transparent)
+   ============================================================ */
+function setupDropzone(){
+  const dz = document.getElementById("dropzone");
+  const input = document.getElementById("frameFile");
+  dz.addEventListener("click", () => input.click());
+  dz.addEventListener("keydown", e => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); input.click(); } });
+  dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("drag"); });
+  dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
+  dz.addEventListener("drop", e => {
+    e.preventDefault(); dz.classList.remove("drag");
+    if(e.dataTransfer.files[0]) handleFrameFile(e.dataTransfer.files[0]);
+  });
+  input.addEventListener("change", () => { if(input.files[0]) handleFrameFile(input.files[0]); });
+}
+function handleFrameFile(file){
+  if(!/image\/(png|webp)/.test(file.type)){ toast("Use a PNG or WebP file", "error"); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      appState.customFrame = { img, src: reader.result, opacity: 1, scale: 1, x: 0, y: 0, fit: "cover", front: true, name: file.name };
+      // reset controls
+      document.getElementById("cfOpacity").value = 100; document.getElementById("cfOpacityVal").textContent = "100%";
+      document.getElementById("cfScale").value = 100; document.getElementById("cfScaleVal").textContent = "100%";
+      document.getElementById("cfX").value = 0; document.getElementById("cfXVal").textContent = "0";
+      document.getElementById("cfY").value = 0; document.getElementById("cfYVal").textContent = "0";
+      document.getElementById("customFrameControls").hidden = false;
+      // file info row
+      const info = document.getElementById("frameFileInfo");
+      info.hidden = false;
+      info.innerHTML = "";
+      const row = document.createElement("div"); row.className = "dz-file";
+      const th = document.createElement("div"); th.className = "fthumb"; th.style.backgroundImage = `url(${reader.result})`;
+      const meta = document.createElement("div"); meta.className = "fmeta";
+      meta.innerHTML = `<div class="n">${file.name}</div><div class="s">${(file.size/1024).toFixed(0)} KB</div>`;
+      const del = document.createElement("button"); del.className = "btn-icon"; del.setAttribute("aria-label","Remove template"); del.setAttribute("data-tip","Remove");
+      del.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+      del.onclick = removeCustomFrame;
+      row.append(th, meta, del);
+      info.appendChild(row);
+      renderPreview();
+      toast("Frame added", "success");
+    };
+    img.onerror = () => toast("Could not read that image", "error");
+    img.src = reader.result;
+  };
+  reader.onerror = () => toast("Could not read file", "error");
+  reader.readAsDataURL(file);
+}
+function removeCustomFrame(){
+  appState.customFrame = null;
+  document.getElementById("customFrameControls").hidden = true;
+  document.getElementById("frameFileInfo").hidden = true;
+  document.getElementById("frameFile").value = "";
+  renderPreview();
+  toast("Template removed");
+}
+function setCustomFrame(key, val){
+  if(!appState.customFrame) return;
+  const cf = appState.customFrame;
+  if(key === "opacity"){ cf.opacity = val/100; document.getElementById("cfOpacityVal").textContent = val + "%"; }
+  else if(key === "scale"){ cf.scale = val/100; document.getElementById("cfScaleVal").textContent = val + "%"; }
+  else if(key === "x"){ cf.x = +val; document.getElementById("cfXVal").textContent = val; }
+  else if(key === "y"){ cf.y = +val; document.getElementById("cfYVal").textContent = val; }
+  else if(key === "fit") cf.fit = val;
+  else if(key === "front") cf.front = val === "true";
+  renderPreview();
+}
+
+/* ============================================================
+   CAMERA — getUserMedia with graceful fallback
+   ============================================================ */
+let mediaStream = null;
+function buildFilterList(){
+  const list = document.getElementById("filterList");
+  list.innerHTML = "";
+  cameraFilters.forEach(f => {
+    const item = document.createElement("button");
+    item.className = "filter-item" + (f.id === appState.cameraSettings.filter ? " active" : "");
+    item.setAttribute("aria-pressed", f.id === appState.cameraSettings.filter);
+    item.onclick = () => selectFilter(f.id);
+    const fp = document.createElement("span"); fp.className = "fp"; fp.style.filter = f.css;
+    const fl = document.createElement("span"); fl.className = "fl"; fl.textContent = f.name;
+    item.append(fp, fl);
+    list.appendChild(item);
+  });
+}
+function selectFilter(id){
+  appState.cameraSettings.filter = id;
+  buildFilterList();
+  renderPreview();
+}
+function baseFilterCss(){
+  const c = appState.cameraSettings;
+  const preset = cameraFilters.find(f => f.id === c.filter)?.css || "";
+  // Warmth simulated with sepia + hue
+  const warm = c.warmth > 0 ? `sepia(${(c.warmth/100).toFixed(2)})` : (c.warmth < 0 ? `hue-rotate(${c.warmth/5}deg)` : "");
+  return `brightness(${c.brightness}) contrast(${c.contrast}) saturate(${c.saturation}) ${warm} ${preset}`.trim();
+}
+function camTransform(){
+  const c = appState.cameraSettings;
+  return `scale(${c.zoom}) ${c.mirror ? "scaleX(-1)" : ""}`;
+}
+
+async function startCamera(){
+  const errBox = document.getElementById("cameraError");
+  try {
+    if(mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+    mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+    errBox.style.display = "none";
+    // populate device list
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const sel = document.getElementById("camDevice");
+    sel.innerHTML = "";
+    devices.filter(d => d.kind === "videoinput").forEach((d, i) => {
+      const opt = document.createElement("option");
+      opt.value = d.deviceId; opt.textContent = d.label || ("Camera " + (i+1));
+      sel.appendChild(opt);
+    });
+    attachStreams();
+    renderPreview();
+    toast("Camera ready", "success");
+  } catch(err){
+    // TODO: real per-user camera stream would sync via WebRTC signaling over Supabase Realtime
+    errBox.style.display = "block";
+    document.getElementById("cameraErrorMsg").textContent =
+      err.name === "NotAllowedError" ? "Camera permission was blocked. You can still use the demo feed."
+      : "Camera unavailable. You can still use the demo feed.";
+    renderPreview(); // placeholder still renders
+  }
+}
+async function switchCamera(deviceId){
+  try {
+    if(mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+    mediaStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } }, audio: false });
+    attachStreams();
+    renderPreview();
+  } catch(e){ toast("Could not switch camera", "error"); }
+}
+function stopCamera(){
+  if(mediaStream){ mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+}
+function attachStreams(){
+  // waiting room self cam
+  const cam0 = document.getElementById("pCam0");
+  if(mediaStream){
+    cam0.innerHTML = "";
+    const v = document.createElement("video"); v.autoplay = true; v.playsInline = true; v.muted = true;
+    v.srcObject = mediaStream; v.style.transform = "scaleX(-1)";
+    cam0.appendChild(v);
+  }
+}
+function setCam(key, val){ appState.cameraSettings[key] = val; }
+function resetCamAdjust(){
+  Object.assign(appState.cameraSettings, { brightness:1, contrast:1, saturation:1, warmth:0, zoom:1 });
+  document.getElementById("briRange").value=100; document.getElementById("briVal").textContent="100%";
+  document.getElementById("conRange").value=100; document.getElementById("conVal").textContent="100%";
+  document.getElementById("satRange").value=100; document.getElementById("satVal").textContent="100%";
+  document.getElementById("warmRange").value=0; document.getElementById("warmVal").textContent="0";
+  document.getElementById("zoomRange").value=100; document.getElementById("zoomVal").textContent="100%";
+  renderPreview();
+}
+
+/* Demo partner feed — abstract animated pattern (no stock faces) */
+function makeDemoFeed(){
+  const cv = document.createElement("canvas");
+  cv.className = "demo-feed"; cv.width = 320; cv.height = 240;
+  cv.style.width = "100%"; cv.style.height = "100%";
+  drawDemoFeed(cv);
+  return cv;
+}
+let demoRaf = null;
+function drawDemoFeed(cv){
+  const ctx = cv.getContext("2d");
+  let t = 0;
+  function frame(){
+    t += 0.02;
+    const g = ctx.createLinearGradient(0,0,cv.width,cv.height);
+    g.addColorStop(0, "#4D9FFF"); g.addColorStop(1, "#1F5FAD");
+    ctx.fillStyle = g; ctx.fillRect(0,0,cv.width,cv.height);
+    // soft moving bands
+    ctx.globalAlpha = 0.15;
+    ctx.fillStyle = "#EAF5FF";
+    for(let i=0;i<4;i++){
+      const y = (Math.sin(t + i) * 0.5 + 0.5) * cv.height;
+      ctx.fillRect(0, y, cv.width, 18);
+    }
+    ctx.globalAlpha = 1;
+    // abstract silhouette
+    ctx.fillStyle = "rgba(23,36,58,0.25)";
+    ctx.beginPath();
+    ctx.arc(cv.width/2, cv.height*0.42, 34, 0, Math.PI*2); // head
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cv.width/2, cv.height*0.95, 62, 42, 0, Math.PI, 0); // shoulders
+    ctx.fill();
+    if(prefersMotion()) demoRaf = requestAnimationFrame(frame);
+  }
+  frame();
+}
+function prefersMotion(){ return !window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+
+function toggleDemoPartner(){
+  appState.demoPartner = !appState.demoPartner;
+  document.getElementById("demoPartnerBtn").textContent = appState.demoPartner ? "Demo partner feed on" : "Use demo partner feed";
+  document.getElementById("demoPartnerBtn").classList.toggle("btn-primary", appState.demoPartner);
+  renderPreview();
+}
+
+/* Camera source mode + swap */
+function setCamMode(mode){
+  appState.camMode = mode;
+  document.querySelectorAll(".segmented [data-mode]").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
+  renderPreview();
+}
+function swapCams(){ appState.swap = !appState.swap; renderPreview(); toast("Swapped positions"); }
+
+/* ============================================================
+   LIVE PREVIEW RENDERER (DOM) — mirrors the final canvas
+   Reads the selected preset + frame + layout config.
+   ============================================================ */
+function currentGrid(){ return gridPresets.find(p => p.id === appState.selectedGrid) || gridPresets[0]; }
+function currentFrame(){ return framePresets.find(f => f.id === appState.selectedFrame) || framePresets[0]; }
+
+function slotSourceType(index){
+  // Determine which feed a slot uses based on camMode
+  const mode = appState.camMode;
+  if(mode === "user") return appState.swap ? "partner" : "user";
+  if(mode === "partner") return appState.swap ? "user" : "partner";
+  if(mode === "alternate") return (index % 2 === 0) !== appState.swap ? "user" : "partner";
+  return "split";
+}
+
+function renderPreview(){
+  renderComp(document.getElementById("compPreview"), false);
+  const p = currentGrid();
+  document.getElementById("previewMeta").textContent =
+    `${p.name} · ${p.ratio} · ${p.out[0]}×${p.out[1]}`;
+}
+
+function renderComp(container, useCaptured){
+  if(!container) return;
+  const p = currentGrid();
+  const f = currentFrame();
+  const L = appState.layout;
+  const framePad = f.pad || 0;
+  container.innerHTML = "";
+  // aspect ratio of overall composition
+  container.style.aspectRatio = p.out[0] + " / " + p.out[1];
+  container.style.setProperty("--comp-bg", L.bg);
+  // frame acts as outer padding + background
+  container.style.background = f.bg;
+  container.style.padding = (framePad/6 + L.pad/6) + "px";
+  container.style.borderRadius = (L.radius/2 + (f.roundExtra?10:6)) + "px";
+  if(f.border) container.style.boxShadow = `inset 0 0 0 ${Math.max(2,f.border/2)}px ${f.borderColor}`;
+  else container.style.boxShadow = "var(--shadow)";
+  if(appState.frameOpts.borderWidth) container.style.boxShadow = `inset 0 0 0 ${appState.frameOpts.borderWidth/2}px ${appState.frameOpts.borderColor}`;
+
+  // inner grid holder to leave room for caption/date areas
+  const inner = document.createElement("div");
+  inner.style.display = "grid";
+  inner.style.gap = (L.gap/2) + "px";
+  inner.style.width = "100%"; inner.style.height = "100%";
+  inner.style.gridTemplateColumns = `repeat(${p.cols}, 1fr)`;
+  inner.style.gridTemplateRows = `repeat(${p.rows}, 1fr)`;
+  inner.style.gridTemplateAreas = p.areas.map(r => `"${r.join(" ")}"`).join(" ");
+
+  slotLabels(p).forEach((lbl, i) => {
+    const slot = document.createElement("div");
+    slot.className = "slot";
+    slot.style.gridArea = lbl;
+    slot.style.borderRadius = (L.radius/2) + "px";
+
+    if(useCaptured && appState.capturedPhotos[i]){
+      const img = document.createElement("img"); img.className = "shot"; img.src = appState.capturedPhotos[i]; img.alt = "Captured photo " + (i+1);
+      slot.appendChild(img);
+    } else {
+      fillSlotLive(slot, i);
+    }
+    // sequence number for editorial/numbered frames
+    if(f.numbering){ const n = document.createElement("span"); n.className="slot-num"; n.textContent = "0"+(i+1); slot.appendChild(n); }
+    inner.appendChild(slot);
+  });
+
+  container.appendChild(inner);
+
+  // custom uploaded frame overlay
+  if(appState.customFrame){
+    const cf = appState.customFrame;
+    const ov = document.createElement("div");
+    ov.className = "comp-frame-overlay";
+    ov.style.zIndex = cf.front ? "5" : "0";
+    const im = document.createElement("img");
+    im.src = cf.src; im.alt = "Custom frame overlay";
+    im.style.opacity = cf.opacity;
+    im.style.left = "50%"; im.style.top = "50%";
+    const objFit = cf.fit === "stretch" ? "fill" : cf.fit;
+    im.style.width = cf.fit === "stretch" ? "100%" : "auto";
+    im.style.height = "100%";
+    im.style.objectFit = objFit;
+    im.style.transform = `translate(-50%,-50%) translate(${cf.x}%, ${cf.y}%) scale(${cf.scale})`;
+    if(cf.fit !== "contain"){ im.style.width = "100%"; }
+    ov.appendChild(im);
+    container.appendChild(ov);
+  }
+
+  // caption / date / room labels drawn as absolutely positioned text
+  addFrameText(container, f);
+}
+
+function fillSlotLive(slot, i){
+  const type = slotSourceType(i);
+  if(type === "split"){
+    const half = document.createElement("div");
+    half.style.display = "flex"; half.style.width = "100%"; half.style.height = "100%";
+    half.appendChild(makeFeedEl("user"));
+    half.appendChild(makeFeedEl("partner"));
+    half.firstChild.style.width = "50%"; half.lastChild.style.width = "50%";
+    slot.appendChild(half);
+  } else {
+    slot.appendChild(makeFeedEl(type));
+  }
+}
+function makeFeedEl(type){
+  if(type === "user" && mediaStream){
+    const v = document.createElement("video");
+    v.autoplay = true; v.playsInline = true; v.muted = true; v.srcObject = mediaStream;
+    v.style.filter = baseFilterCss();
+    v.style.transform = camTransform();
+    v.style.objectFit = appState.cameraSettings.fit;
+    v.style.height = "100%";
+    return v;
+  }
+  if(type === "partner" && appState.demoPartner){
+    return makeDemoFeed();
+  }
+  // placeholder
+  const ph = document.createElement("div");
+  ph.style.width = "100%"; ph.style.height = "100%";
+  ph.style.display = "flex"; ph.style.alignItems = "center"; ph.style.justifyContent = "center";
+  ph.style.background = "var(--bg-2)"; ph.style.color = "var(--text-2)";
+  ph.style.fontSize = "11px"; ph.style.fontWeight = "600";
+  ph.textContent = type === "user" ? "Your camera" : "Partner";
+  return ph;
+}
+
+function addFrameText(container, f){
+  const cap = appState.frameOpts.caption || (appState.frameOpts.showRoom ? "" : "");
+  const parts = [];
+  if(f.captionArea || f.minimal || appState.frameOpts.caption) { if(appState.frameOpts.caption) parts.push(appState.frameOpts.caption); }
+  if(f.topLabel){
+    const el = txtEl(appState.frameOpts.caption || ("Room " + appState.roomCode), "top");
+    container.appendChild(el);
+  }
+  const bottomBits = [];
+  if(appState.frameOpts.showRoom) bottomBits.push("Room " + appState.roomCode);
+  if(appState.frameOpts.caption && !f.topLabel) bottomBits.push(appState.frameOpts.caption);
+  if(appState.frameOpts.showDate || f.dateArea) bottomBits.push(niceDate());
+  if(f.captionArea && !bottomBits.length) bottomBits.push("Room " + appState.roomCode);
+  if(bottomBits.length){
+    container.appendChild(txtEl(bottomBits.join("   ·   "), "bottom", f.film));
+  }
+}
+function txtEl(text, pos, light){
+  const el = document.createElement("div");
+  el.textContent = text;
+  el.style.position = "absolute"; el.style.left = "0"; el.style.right = "0";
+  el.style.textAlign = "center"; el.style.fontSize = "11px"; el.style.fontWeight = "600";
+  el.style.letterSpacing = "0.04em"; el.style.zIndex = "6"; el.style.pointerEvents = "none";
+  el.style.color = light ? "#EAF5FF" : "#607089";
+  if(pos === "top"){ el.style.top = "6px"; } else { el.style.bottom = "6px"; }
+  return el;
+}
+function niceDate(){
+  return new Date().toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" });
+}
+
+/* ============================================================
+   TIMER settings
+   ============================================================ */
+function setTimer(sec, btn){ appState.timer = sec; document.querySelectorAll("#timerChips .chip").forEach(c=>c.classList.remove("active")); btn.classList.add("active"); }
+function setDelay(sec, btn){ appState.shotDelay = sec; document.querySelectorAll("#delayChips .chip").forEach(c=>c.classList.remove("active")); btn.classList.add("active"); }
+function setRetakeMode(mode, btn){ appState.retakeMode = mode; document.querySelectorAll("#retakeMode button").forEach(b=>b.classList.remove("active")); btn.classList.add("active"); }
+
+/* ============================================================
+   WEB AUDIO — tiny countdown beep (no external files)
+   ============================================================ */
+let audioCtx = null;
+function beep(freq, dur){
+  if(!appState.timerSound) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.frequency.value = freq; o.type = "sine";
+    g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.15, audioCtx.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + dur);
+  } catch(e){}
+}
+
+/* ============================================================
+   PHOTO SESSION — countdown + capture
+   ============================================================ */
+let session = { index: 0, total: 0, paused: false, running: false, retakeIndex: -1, timeoutId: null };
+
+function startSession(){
+  const p = currentGrid();
+  session.total = slotCount(p);
+  session.index = 0;
+  session.retakeIndex = -1;
+  session.paused = false;
+  session.running = true;
+  appState.capturedPhotos = new Array(session.total).fill(null);
+  // attach live video to session stage
+  const v = document.getElementById("sessionVideo");
+  if(mediaStream){ v.srcObject = mediaStream; v.style.filter = baseFilterCss(); v.style.transform = camTransform(); v.style.objectFit = appState.cameraSettings.fit; }
+  else { v.style.display = "none"; }
+  document.getElementById("sessionPartner").style.display = appState.participants[1]?.connected ? "" : "none";
+  buildSessionThumbs();
+  showScreen("session");
+  runShot();
+}
+
+function buildSessionThumbs(){
+  const wrap = document.getElementById("sessionThumbs");
+  wrap.innerHTML = "";
+  for(let i=0;i<session.total;i++){
+    const t = document.createElement("div");
+    t.className = "st pending"; t.id = "st-" + i;
+    if(appState.capturedPhotos[i]){
+      t.className = "st"; t.innerHTML = `<img src="${appState.capturedPhotos[i]}" alt="Photo ${i+1}">`;
+    } else { t.textContent = (i+1); }
+    wrap.appendChild(t);
+  }
+}
+
+function updateProgress(){
+  const cur = session.retakeIndex >= 0 ? session.retakeIndex : session.index;
+  document.getElementById("sessionProgress").textContent =
+    session.retakeIndex >= 0 ? `Retaking photo ${cur+1}` : `Photo ${cur+1} of ${session.total}`;
+}
+
+function runShot(){
+  if(!session.running) return;
+  if(session.paused){ session.timeoutId = setTimeout(runShot, 300); return; }
+  updateProgress();
+  let count = appState.timer;
+  const numEl = document.getElementById("countdownNum");
+  numEl.hidden = false;
+
+  function tick(){
+    if(session.paused){ session.timeoutId = setTimeout(tick, 300); return; }
+    if(count <= 0){
+      numEl.hidden = true;
+      capturePhoto();
+      return;
+    }
+    numEl.textContent = count;
+    numEl.classList.remove("pop"); void numEl.offsetWidth; numEl.classList.add("pop");
+    beep(count <= 1 ? 880 : 660, 0.12);
+    count--;
+    session.timeoutId = setTimeout(tick, 1000);
+  }
+  tick();
+}
+
+function capturePhoto(){
+  const idx = session.retakeIndex >= 0 ? session.retakeIndex : session.index;
+  // flash
+  if(appState.flash){
+    const fl = document.getElementById("sessionFlash");
+    fl.classList.remove("fire"); void fl.offsetWidth; fl.classList.add("fire");
+  }
+  beep(1046, 0.08);
+
+  const dataUrl = grabFrame();
+  appState.capturedPhotos[idx] = dataUrl;
+
+  // update thumb
+  const st = document.getElementById("st-" + idx);
+  if(st){ st.className = "st"; st.innerHTML = `<img src="${dataUrl}" alt="Photo ${idx+1}">`; }
+
+  if(session.retakeIndex >= 0){
+    // single retake finished
+    session.retakeIndex = -1;
+    session.running = false;
+    setTimeout(() => showScreen("review") || renderReview(), 400);
+    renderReview();
+    return;
+  }
+
+  session.index++;
+  if(session.index >= session.total){
+    session.running = false;
+    setTimeout(() => { renderReview(); showScreen("review"); }, 450);
+  } else {
+    session.timeoutId = setTimeout(runShot, appState.shotDelay * 1000);
+  }
+}
+
+/* Grab a single slot frame from the live video, or a generated
+   placeholder if the camera is unavailable. */
+function grabFrame(){
+  const cv = document.createElement("canvas");
+  cv.width = 800; cv.height = 600;
+  const ctx = cv.getContext("2d");
+  const v = document.getElementById("sessionVideo");
+  if(mediaStream && v.videoWidth){
+    ctx.save();
+    ctx.filter = baseFilterCss();
+    if(appState.cameraSettings.mirror){ ctx.translate(cv.width,0); ctx.scale(-1,1); }
+    // cover-fit the video into canvas
+    const vr = v.videoWidth / v.videoHeight, cr = cv.width / cv.height;
+    let sw, sh, sx, sy;
+    if(vr > cr){ sh = v.videoHeight; sw = sh * cr; sx = (v.videoWidth - sw)/2; sy = 0; }
+    else { sw = v.videoWidth; sh = sw / cr; sx = 0; sy = (v.videoHeight - sh)/2; }
+    ctx.drawImage(v, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+    ctx.restore();
+  } else {
+    // generated placeholder so the flow still works
+    const g = ctx.createLinearGradient(0,0,cv.width,cv.height);
+    g.addColorStop(0,"#B9DCFF"); g.addColorStop(1,"#4D9FFF");
+    ctx.fillStyle = g; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.beginPath(); ctx.arc(cv.width/2, cv.height*0.42, 90, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cv.width/2, cv.height*1.05, 170, 120, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = "rgba(23,36,58,0.5)"; ctx.font = "600 26px Inter, sans-serif"; ctx.textAlign="center";
+    ctx.fillText("No camera", cv.width/2, cv.height-24);
+  }
+  return cv.toDataURL("image/jpeg", 0.9);
+}
+
+function togglePause(){
+  session.paused = !session.paused;
+  document.getElementById("pauseBtn").textContent = session.paused ? "Resume" : "Pause";
+}
+function cancelSession(){
+  session.running = false;
+  clearTimeout(session.timeoutId);
+  document.getElementById("countdownNum").hidden = true;
+  showScreen("setup");
+}
+
+/* ============================================================
+   REVIEW
+   ============================================================ */
+function renderReview(){
+  renderComp(document.getElementById("reviewComp"), true);
+  const wrap = document.getElementById("reviewThumbs");
+  wrap.innerHTML = "";
+  appState.capturedPhotos.forEach((src, i) => {
+    const row = document.createElement("div");
+    row.className = "review-thumb";
+    row.innerHTML = `
+      <div class="rt-img">${src ? `<img src="${src}" alt="Photo ${i+1}">` : ""}</div>
+      <div class="rt-info"><div class="n">Photo ${i+1}</div></div>`;
+    const btn = document.createElement("button");
+    btn.className = "btn btn-secondary"; btn.style.padding = "6px 12px"; btn.textContent = "Retake";
+    btn.onclick = () => retakePhoto(i);
+    row.appendChild(btn);
+    wrap.appendChild(row);
+  });
+}
+function retakePhoto(i){
+  if(appState.retakeMode === "all"){ restartSession(); return; }
+  session.retakeIndex = i;
+  session.total = slotCount(currentGrid());
+  session.running = true;
+  session.paused = false;
+  const v = document.getElementById("sessionVideo");
+  if(mediaStream){ v.srcObject = mediaStream; v.style.filter = baseFilterCss(); v.style.transform = camTransform(); v.style.display=""; }
+  buildSessionThumbs();
+  showScreen("session");
+  runShot();
+}
+function restartSession(){ startSession(); }
+
+/* ============================================================
+   FINAL CANVAS COMPOSITION (high-res)
+   ============================================================ */
+function buildFinal(){
+  const p = currentGrid();
+  const f = currentFrame();
+  const L = appState.layout;
+  const [W, H] = p.out;
+  const canvas = document.getElementById("finalCanvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  // scale reference (presets tuned at ~1080 baseline)
+  const s = Math.min(W, H) / 400;
+  const framePad = (f.pad || 0) * s;
+  const outerPad = L.pad * s;
+  const gap = L.gap * s;
+  const radius = L.radius * s;
+  const totalPad = framePad + outerPad;
+
+  // background (frame color)
+  ctx.fillStyle = f.bg; ctx.fillRect(0,0,W,H);
+
+  // reserve label band at bottom if needed
+  const bottomBits = [];
+  if(appState.frameOpts.showRoom) bottomBits.push("Room " + appState.roomCode);
+  if(appState.frameOpts.caption) bottomBits.push(appState.frameOpts.caption);
+  if(appState.frameOpts.showDate || f.dateArea) bottomBits.push(niceDate());
+  if(f.captionArea && !bottomBits.length) bottomBits.push("Room " + appState.roomCode);
+  const labelBand = bottomBits.length ? 40 * s : 0;
+  const topBand = f.topLabel ? 34 * s : 0;
+
+  // inner grid rect
+  const gx = totalPad, gy = totalPad + topBand;
+  const gw = W - totalPad*2;
+  const gh = H - totalPad*2 - labelBand - topBand;
+
+  const cellW = (gw - gap*(p.cols-1)) / p.cols;
+  const cellH = (gh - gap*(p.rows-1)) / p.rows;
+
+  // compute pixel rect for each slot label from its area spans
+  const labels = slotLabels(p);
+  const rects = {};
+  labels.forEach(lbl => {
+    let minC=99,maxC=-1,minR=99,maxR=-1;
+    p.areas.forEach((row,r) => row.forEach((cell,c) => {
+      if(cell === lbl){ minC=Math.min(minC,c); maxC=Math.max(maxC,c); minR=Math.min(minR,r); maxR=Math.max(maxR,r); }
+    }));
+    const x = gx + minC*(cellW+gap);
+    const y = gy + minR*(cellH+gap);
+    const w = (maxC-minC+1)*cellW + (maxC-minC)*gap;
+    const h = (maxR-minR+1)*cellH + (maxR-minR)*gap;
+    rects[lbl] = { x, y, w, h };
+  });
+
+  // helper to load a dataURL into image
+  const loads = labels.map((lbl, i) => new Promise(res => {
+    const src = appState.capturedPhotos[i];
+    if(!src){ res({ lbl, img:null }); return; }
+    const im = new Image();
+    im.onload = () => res({ lbl, img: im });
+    im.onerror = () => res({ lbl, img:null });
+    im.src = src;
+  }));
+
+  Promise.all(loads).then(results => {
+    // draw canvas bg for slots
+    ctx.fillStyle = L.bg;
+    labels.forEach(lbl => { const r = rects[lbl]; roundRect(ctx, r.x, r.y, r.w, r.h, radius); ctx.fill(); });
+
+    results.forEach(({lbl, img}) => {
+      const r = rects[lbl];
+      ctx.save();
+      roundRect(ctx, r.x, r.y, r.w, r.h, radius); ctx.clip();
+      if(img){
+        // cover fit
+        const ir = img.width/img.height, rr = r.w/r.h;
+        let dw, dh, dx, dy;
+        if(ir > rr){ dh = r.h; dw = dh*ir; dx = r.x-(dw-r.w)/2; dy = r.y; }
+        else { dw = r.w; dh = dw/ir; dx = r.x; dy = r.y-(dh-r.h)/2; }
+        ctx.drawImage(img, dx, dy, dw, dh);
+      } else {
+        const g = ctx.createLinearGradient(r.x,r.y,r.x+r.w,r.y+r.h);
+        g.addColorStop(0,"#B9DCFF"); g.addColorStop(1,"#4D9FFF");
+        ctx.fillStyle = g; ctx.fillRect(r.x,r.y,r.w,r.h);
+      }
+      ctx.restore();
+
+      // built-in frame per-slot border
+      if(f.border){ ctx.strokeStyle = f.borderColor; ctx.lineWidth = Math.max(2, f.border*s*0.4); roundRect(ctx, r.x, r.y, r.w, r.h, radius); ctx.stroke(); }
+      if(appState.frameOpts.borderWidth){ ctx.strokeStyle = appState.frameOpts.borderColor; ctx.lineWidth = appState.frameOpts.borderWidth*s*0.5; roundRect(ctx, r.x, r.y, r.w, r.h, radius); ctx.stroke(); }
+      if(f.numbering){ const seq = labels.indexOf(lbl)+1; ctx.fillStyle="rgba(23,36,58,0.55)"; roundRect(ctx, r.x+8*s, r.y+8*s, 34*s, 20*s, 6*s); ctx.fill(); ctx.fillStyle="#fff"; ctx.font=`700 ${13*s}px Inter, sans-serif`; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText("0"+seq, r.x+14*s, r.y+18*s); }
+    });
+
+    // top label
+    if(topBand){
+      ctx.fillStyle = f.film ? "#EAF5FF" : "#607089";
+      ctx.font = `600 ${15*s}px Inter, sans-serif`; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(appState.frameOpts.caption || ("Room " + appState.roomCode), W/2, totalPad + topBand/2);
+    }
+    // bottom labels
+    if(labelBand){
+      ctx.fillStyle = f.film ? "#EAF5FF" : "#607089";
+      ctx.font = `600 ${15*s}px Inter, sans-serif`; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(bottomBits.join("    ·    "), W/2, H - totalPad - labelBand/2);
+    }
+
+    // custom uploaded frame overlay
+    const cf = appState.customFrame;
+    const finish = () => {
+      appState.finalImage = canvas.toDataURL("image/png");
+      document.getElementById("finalMeta").textContent = `${p.name} · ${p.ratio} · ${W} × ${H}px`;
+      updateSavedNote(false);
+      showScreen("final");
+    };
+    if(cf){
+      const im = new Image();
+      im.onload = () => {
+        ctx.save(); ctx.globalAlpha = cf.opacity;
+        const rr = W/H, ir = im.width/im.height;
+        let dw, dh;
+        if(cf.fit === "stretch"){ dw = W; dh = H; }
+        else if(cf.fit === "contain"){ if(ir>rr){ dw=W; dh=W/ir; } else { dh=H; dw=H*ir; } }
+        else { if(ir>rr){ dh=H; dw=H*ir; } else { dw=W; dh=W/ir; } } // cover
+        dw *= cf.scale; dh *= cf.scale;
+        const dx = (W-dw)/2 + cf.x/100*W;
+        const dy = (H-dh)/2 + cf.y/100*H;
+        ctx.drawImage(im, dx, dy, dw, dh);
+        ctx.restore();
+        finish();
+      };
+      im.onerror = finish;
+      im.src = cf.src;
+    } else { finish(); }
+    // TODO: Upload final image to Supabase Storage
+  });
+}
+function roundRect(ctx, x, y, w, h, r){
+  r = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+/* ============================================================
+   DOWNLOAD + SAVE (localStorage) + PREVIOUS RESULT
+   ============================================================ */
+function downloadFinal(){
+  const canvas = document.getElementById("finalCanvas");
+  const name = `bluebooth-${appState.roomCode || "room"}-${isoDate()}.png`;
+  canvas.toBlob(blob => {
+    if(!blob){ toast("Could not export image", "error"); return; }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast("Downloaded", "success");
+  }, "image/png");
+}
+function isoDate(){
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+function saveResult(){
+  // Lightweight save to localStorage (mockup only)
+  // TODO: Upload final image to Supabase Storage + insert history row
+  try {
+    const record = {
+      code: appState.roomCode,
+      date: niceDate(),
+      grid: appState.selectedGrid,
+      image: appState.finalImage,
+      savedAt: Date.now(),
+    };
+    localStorage.setItem("bluebooth:last", JSON.stringify(record));
+    updateSavedNote(true);
+    toast("Saved to this browser", "success");
+  } catch(e){ toast("Could not save", "error"); }
+}
+function updateSavedNote(on){
+  const note = document.getElementById("savedNote");
+  note.classList.toggle("on", on);
+  note.textContent = on ? "Saved to this browser" : "Not saved yet";
+}
+function createAnother(){
+  appState.capturedPhotos = [];
+  appState.finalImage = null;
+  setStep("layout");
+  showScreen("setup");
+}
+function openPreviousResult(){
+  const body = document.getElementById("prevModalBody");
+  let record = null;
+  try { record = JSON.parse(localStorage.getItem("bluebooth:last")); } catch(e){}
+  if(!record || !record.image){
+    body.innerHTML = `
+      <div class="empty-state">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        <p style="font-weight:600; color:var(--text);">No saved results yet</p>
+        <p style="margin-top:4px;">Create a photobooth and save it to see it here.</p>
+      </div>`;
+  } else {
+    body.innerHTML = `
+      <img src="${record.image}" alt="Previous photobooth result" style="width:100%; border-radius:12px; border:1px solid var(--border);" />
+      <p class="hint" style="margin-top:10px;">Room ${record.code} · ${record.date}</p>
+      <div style="display:flex; gap:10px; margin-top:14px;">
+        <a class="btn btn-primary" href="${record.image}" download="bluebooth-${record.code}-${isoDate()}.png">Download</a>
+        <button class="btn btn-secondary" onclick="closeModal('prevModal')">Close</button>
+      </div>`;
+  }
+  openModal("prevModal");
+}
+
+/* ============================================================
+   HEADER BUTTONS
+   ============================================================ */
+document.getElementById("headerExitBtn").onclick = leaveRoom;
+document.getElementById("headerCamBtn").onclick = () => { setStep("camera"); if(appState.currentScreen!=="setup") showScreen("setup"); startCamera(); };
+
+/* Escape closes modals */
+document.addEventListener("keydown", e => { if(e.key === "Escape") document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open")); });
+document.getElementById("prevModal").addEventListener("click", e => { if(e.target.id === "prevModal") closeModal("prevModal"); });
+
+/* Join code auto-uppercase */
+document.getElementById("joinCode").addEventListener("input", e => {
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0,6);
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init(){
+  buildGridList("all");
+  buildFrameList();
+  buildFilterList();
+  setupDropzone();
+  renderPreview();
+  // reflect default gap/pad/rad labels
+  document.getElementById("gapVal").textContent = appState.layout.gap;
+  document.getElementById("padVal").textContent = appState.layout.pad;
+  document.getElementById("radVal").textContent = appState.layout.radius;
+}
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+{
+  "name": "Bluebooth Cline Development Pack",
+  "generated_for": "bluebooth.zip",
+  "files": [
+    "00_START_HERE.md",
+    "01_CURRENT_PROJECT_AUDIT.md",
+    "02_PRODUCT_SPEC.md",
+    "03_TARGET_ARCHITECTURE.md",
+    "04_DATA_SECURITY_BLUEPRINT.md",
+    "05_CLINE_GLOBAL_RULES.md",
+    "06_CLINE_PROMPT_CARDS.md",
+    "15_FINAL_DEFINITION_OF_DONE.md",
+    "phases/PHASE_01_MIGRATE_MOCKUP_TO_NEXTJS.md",
+    "phases/PHASE_02_LOCAL_PHOTOBOOTH_ENGINE.md",
+    "phases/PHASE_03_SUPABASE_FOUNDATION.md",
+    "phases/PHASE_04_REALTIME_ROOMS.md",
+    "phases/PHASE_05_WEBRTC_DUAL_CAMERA.md",
+    "phases/PHASE_06_SYNCHRONIZED_CAPTURE.md",
+    "phases/PHASE_07_RESULTS_AND_HISTORY.md",
+    "phases/PHASE_08_QA_POLISH_HARDENING.md",
+    "phases/PHASE_09_DEPLOYMENT.md"
+  ],
+  "phase_order": [
+    "phases/PHASE_01_",
+    "phases/PHASE_02_",
+    "phases/PHASE_03_",
+    "phases/PHASE_04_",
+    "phases/PHASE_05_",
+    "phases/PHASE_06_",
+    "phases/PHASE_07_",
+    "phases/PHASE_08_",
+    "phases/PHASE_09_"
+  ]
+}
