@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { getRenderLayerOrder } from '@/lib/bluebooth/canvas-renderer'
+import {
+  configureCompositionImageCors,
+  getRenderLayerOrder,
+} from '@/lib/bluebooth/canvas-renderer'
 import type { CustomFrame } from '@/types/bluebooth'
 
 const frame: CustomFrame = {
@@ -16,6 +19,12 @@ const frame: CustomFrame = {
 }
 
 describe('canvas layer configuration', () => {
+  it('loads signed composition images with anonymous CORS before drawing', () => {
+    const image = { crossOrigin: null as string | null }
+    configureCompositionImageCors(image)
+    expect(image.crossOrigin).toBe('anonymous')
+  })
+
   it('places a front overlay after photos and built-in frame details', () => {
     expect(getRenderLayerOrder(frame)).toEqual([
       'background',

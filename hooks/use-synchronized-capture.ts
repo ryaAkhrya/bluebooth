@@ -9,7 +9,12 @@ import {
   parseFrozenCaptureConfiguration,
   selectFrozenCaptureConfiguration,
 } from '@/lib/bluebooth/capture-events'
-import { getCaptureReadiness } from '@/lib/bluebooth/capture-readiness'
+import {
+  getCaptureReadiness,
+  getCaptureReadinessKey,
+  shouldHydrateCaptureSnapshot,
+  shouldPollCaptureReadinessTransition,
+} from '@/lib/bluebooth/capture-readiness'
 import { captureVideoFrame } from '@/lib/bluebooth/media'
 import { getSlotIds } from '@/lib/bluebooth/geometry'
 import { getGridPreset } from '@/lib/bluebooth/presets/grids'
@@ -49,6 +54,15 @@ import type {
 import type { Json } from '@/types/database'
 
 const captureLeadFloorMs = 2_000
+
+function captureReadinessDiagnostic(
+  event: string,
+  details: Record<string, unknown>,
+) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug(`[Bluebooth capture readiness] ${event}`, details)
+  }
+}
 
 export function useSynchronizedCapture(input: {
   cameraStatus: CameraStatus
@@ -97,6 +111,7 @@ export function useSynchronizedCapture(input: {
   const refreshRef = useRef<() => Promise<CaptureSessionSnapshot | null>>(
     async () => null,
   )
+  const hydrateRef = useRef<(next: CaptureSessionSnapshot) => void>(() => {})
 
   const onlineRoom = room.onlineRoom
   const membership = onlineRoom?.membership ?? null
@@ -145,6 +160,32 @@ export function useSynchronizedCapture(input: {
 
   const hydrate = useCallback(
     (next: CaptureSessionSnapshot) => {
+      const previous = snapshotRef.current
+      if (!shouldHydrateCaptureSnapshot(previous, next)) {
+        captureReadinessDiagnostic('ignored stale snapshot', {
+          role: membership?.role ?? 'unknown',
+          currentShot: previous?.session.current_shot_index ?? null,
+          currentRevision: previous?.session.revision ?? null,
+          incomingShot: next.session.current_shot_index,
+          incomingRevision: next.session.revision,
+        })
+        return
+      }
+      if (
+        previous &&
+        (previous.session.revision !== next.session.revision ||
+          previous.session.current_shot_index !==
+            next.session.current_shot_index)
+      ) {
+        captureReadinessDiagnostic('readiness reset', {
+          role: membership?.role ?? 'unknown',
+          previousShot: previous.session.current_shot_index,
+          currentShot: next.session.current_shot_index,
+          previousRevision: previous.session.revision,
+          currentRevision: next.session.revision,
+          status: next.session.status,
+        })
+      }
       snapshotRef.current = next
       setSnapshot(next)
       setConfiguration(
@@ -178,8 +219,12 @@ export function useSynchronizedCapture(input: {
         dispatchBluebooth({ type: 'navigate', screen: 'setup' })
       }
     },
-    [currentFallbackConfiguration, dispatchBluebooth],
+    [currentFallbackConfiguration, dispatchBluebooth, membership?.role],
   )
+
+  useEffect(() => {
+    hydrateRef.current = hydrate
+  }, [hydrate])
 
   const refresh = useCallback(async () => {
     if (!client || !onlineRoom) return null
@@ -196,7 +241,8 @@ export function useSynchronizedCapture(input: {
   }, [refresh])
 
   useEffect(() => {
-    if (!isOnline || !client || !onlineRoom) {
+    const roomId = onlineRoom?.room.id ?? null
+    if (!isOnline || !client || !roomId) {
       queueMicrotask(() => {
         snapshotRef.current = null
         setSnapshot(null)
@@ -210,13 +256,13 @@ export function useSynchronizedCapture(input: {
     }
     let active = true
     void Promise.all([
-      measureCaptureClockOffset(client, onlineRoom.room.id),
-      fetchActiveCaptureSession(client, onlineRoom.room.id),
+      measureCaptureClockOffset(client, roomId),
+      fetchActiveCaptureSession(client, roomId),
     ])
       .then(([offset, restored]) => {
         if (!active) return
         clockOffsetRef.current = offset
-        if (restored) hydrate(restored)
+        if (restored) hydrateRef.current(restored)
       })
       .catch(() => {
         if (active) {
@@ -230,7 +276,7 @@ export function useSynchronizedCapture(input: {
     return () => {
       active = false
     }
-  }, [client, hydrate, isOnline, onlineRoom])
+  }, [client, isOnline, onlineRoom?.room.id])
 
   useEffect(() => {
     if (!isOnline) return
@@ -242,6 +288,13 @@ export function useSynchronizedCapture(input: {
       )
       if (!sender) return
 
+      if (event.type === 'capture:prepare') {
+        captureReadinessDiagnostic('prepare received', {
+          role: membership?.role ?? 'unknown',
+          currentShot: event.payload.shotIndex,
+          revision: event.revision,
+        })
+      }
       if (event.type === 'capture:ready-ack') {
         dispatch({ type: 'event', event })
         void refreshRef.current()
@@ -257,7 +310,7 @@ export function useSynchronizedCapture(input: {
       if (sender.user_id !== hostUserId) return
       void refreshRef.current()
     })
-  }, [hostUserId, isHost, isOnline, room])
+  }, [hostUserId, isHost, isOnline, membership?.role, room])
 
   const eventBase = useCallback(
     (sessionId: string, revision: number) => {
@@ -351,8 +404,23 @@ export function useSynchronizedCapture(input: {
     const current = snapshotRef.current
     if (!client || !current || !membership) return false
     const cameraReady = localCameraReady
-    const key = `${current.session.id}:${current.session.revision}:${cameraReady}`
-    if (readinessKeyRef.current === key) return cameraReady
+    const key = getCaptureReadinessKey(current.session, cameraReady)
+    if (readinessKeyRef.current === key) {
+      captureReadinessDiagnostic('acknowledgement skipped', {
+        role: membership.role,
+        currentShot: current.session.current_shot_index,
+        revision: current.session.revision,
+        cameraReady,
+        reason: 'already acknowledged',
+      })
+      return cameraReady
+    }
+    captureReadinessDiagnostic('sending acknowledgement', {
+      role: membership.role,
+      currentShot: current.session.current_shot_index,
+      revision: current.session.revision,
+      cameraReady,
+    })
     try {
       await acknowledgeCaptureReady(client, {
         sessionId: current.session.id,
@@ -360,6 +428,12 @@ export function useSynchronizedCapture(input: {
         cameraReady,
       })
       readinessKeyRef.current = key
+      captureReadinessDiagnostic('acknowledgement accepted', {
+        role: membership.role,
+        currentShot: current.session.current_shot_index,
+        revision: current.session.revision,
+        cameraReady,
+      })
       const base = eventBase(current.session.id, current.session.revision)
       if (base) {
         await send({
@@ -371,6 +445,13 @@ export function useSynchronizedCapture(input: {
       await refresh()
       return cameraReady
     } catch (error) {
+      captureReadinessDiagnostic('acknowledgement failed', {
+        role: membership.role,
+        currentShot: current.session.current_shot_index,
+        revision: current.session.revision,
+        cameraReady,
+        reason: error instanceof Error ? error.message : 'unknown error',
+      })
       dispatch({
         type: 'operation',
         operation: 'error',
@@ -390,12 +471,18 @@ export function useSynchronizedCapture(input: {
   useEffect(() => {
     if (snapshot?.session.status !== 'waiting-for-ready') return
     void acknowledgeReady()
-  }, [acknowledgeReady, snapshot?.session.revision, snapshot?.session.status])
+  }, [
+    acknowledgeReady,
+    snapshot?.session.current_shot_index,
+    snapshot?.session.revision,
+    snapshot?.session.status,
+  ])
 
   useEffect(() => {
     if (
       !isOnline ||
-      snapshot?.session.status !== 'waiting-for-ready'
+      !snapshot ||
+      !shouldPollCaptureReadinessTransition(snapshot.session.status)
     ) {
       return
     }
@@ -403,7 +490,7 @@ export function useSynchronizedCapture(input: {
       void refreshRef.current()
     }, 1_500)
     return () => window.clearInterval(timer)
-  }, [isOnline, snapshot?.session.status])
+  }, [isOnline, snapshot])
 
   const retryReadiness = useCallback(() => {
     readinessKeyRef.current = null
@@ -890,6 +977,28 @@ export function useSynchronizedCapture(input: {
   )
   const { bothReady, participantsConnected, canStartCapture } =
     getCaptureReadiness(onlineRoom?.members ?? [], readiness, room.presence)
+
+  useEffect(() => {
+    if (!snapshot || snapshot.session.status !== 'waiting-for-ready') return
+    captureReadinessDiagnostic('readiness state', {
+      role: membership?.role ?? 'unknown',
+      currentShot: snapshot.session.current_shot_index,
+      revision: snapshot.session.revision,
+      localCameraReady,
+      acknowledgedParticipants: Object.values(readiness).filter(Boolean).length,
+      bothReady,
+      participantsConnected,
+      canStartCapture,
+    })
+  }, [
+    bothReady,
+    canStartCapture,
+    localCameraReady,
+    membership?.role,
+    participantsConnected,
+    readiness,
+    snapshot,
+  ])
 
   const automaticStartKeyRef = useRef<string | null>(null)
   useEffect(() => {

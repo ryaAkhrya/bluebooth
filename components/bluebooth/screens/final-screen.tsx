@@ -12,6 +12,7 @@ import { buildResultFilename } from '@/lib/bluebooth/image'
 import { useLocalResult } from '@/hooks/use-local-result'
 import type { SynchronizedCaptureController } from '@/hooks/use-synchronized-capture'
 import { resolveCapturedSlotImages } from '@/lib/bluebooth/capture-events'
+import { releaseFinalRenderKey } from '@/lib/bluebooth/final-result'
 
 export function FinalScreen({
   synchronizedCapture,
@@ -36,6 +37,11 @@ function SynchronizedFinalScreen({
   const renderingKeyRef = useRef<string | null>(null)
   const configuration = synchronizedCapture.configuration
   const session = synchronizedCapture.snapshot?.session
+  const result = synchronizedCapture.snapshot?.result
+  const isHost = synchronizedCapture.isHost
+  const customFrameUrl = synchronizedCapture.customFrameUrl
+  const finalizeResult = synchronizedCapture.finalizeResult
+  const setFinalResult = media.setFinalResult
   const total = session?.shot_count ?? 0
   const grid = getGridPreset(configuration?.selectedGrid ?? state.selectedGrid)
   const frame = getFramePreset(configuration?.selectedFrame ?? state.selectedFrame)
@@ -57,8 +63,8 @@ function SynchronizedFinalScreen({
       !canvas ||
       !configuration ||
       !session ||
-      !synchronizedCapture.isHost ||
-      synchronizedCapture.snapshot?.result ||
+      !isHost ||
+      result ||
       slotImages.some((source) => !source)
     ) {
       return
@@ -73,10 +79,10 @@ function SynchronizedFinalScreen({
       layout: configuration.layout,
       frameOptions: configuration.frameOptions,
       customFrame:
-        configuration.customFrame && synchronizedCapture.customFrameUrl
+        configuration.customFrame && customFrameUrl
           ? {
               ...configuration.customFrame,
-              source: synchronizedCapture.customFrameUrl,
+              source: customFrameUrl,
             }
           : null,
       slotImages,
@@ -85,8 +91,8 @@ function SynchronizedFinalScreen({
     })
       .then(async (blob) => {
         if (!active) return
-        media.setFinalResult(blob, grid.output[0], grid.output[1])
-        const saved = await synchronizedCapture.finalizeResult(
+        setFinalResult(blob, grid.output[0], grid.output[1])
+        const saved = await finalizeResult(
           blob,
           grid.output[0],
           grid.output[1],
@@ -102,17 +108,24 @@ function SynchronizedFinalScreen({
       })
     return () => {
       active = false
+      renderingKeyRef.current = releaseFinalRenderKey(
+        renderingKeyRef.current,
+        key,
+      )
     }
   }, [
     configuration,
+    customFrameUrl,
+    finalizeResult,
     frame,
     grid,
-    media,
+    isHost,
+    result,
     session,
+    setFinalResult,
     slotImages,
     state.roomCode,
     state.roomName,
-    synchronizedCapture,
     toast,
   ])
 

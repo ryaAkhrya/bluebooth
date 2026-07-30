@@ -34,9 +34,16 @@ export function getRenderLayerOrder(customFrame: CustomFrame | null): RenderLaye
   ]
 }
 
+export function configureCompositionImageCors(
+  image: Pick<HTMLImageElement, 'crossOrigin'>,
+) {
+  image.crossOrigin = 'anonymous'
+}
+
 function loadImage(source: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image()
+    configureCompositionImageCors(image)
     image.onload = () => resolve(image)
     image.onerror = () => reject(new Error('An image required for composition could not be decoded'))
     image.src = source
