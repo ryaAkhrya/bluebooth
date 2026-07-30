@@ -6,6 +6,8 @@ export type PhotoboothSessionRow =
   Database['public']['Tables']['photobooth_sessions']['Row']
 export type CaptureRow = Database['public']['Tables']['captures']['Row']
 export type ResultRow = Database['public']['Tables']['results']['Row']
+export type CaptureReadinessRow =
+  Database['public']['Tables']['capture_session_readiness']['Row']
 
 export interface RoomAccess {
   roomId: string

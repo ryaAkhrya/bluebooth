@@ -9,7 +9,7 @@ export type RoomConnectionStatus =
   | 'reconnecting'
   | 'error'
 
-export type RoomPresenceStage = 'waiting' | 'setup'
+export type RoomPresenceStage = 'waiting' | 'setup' | 'session' | 'review'
 
 export interface RoomPresence {
   userId: string
@@ -35,6 +35,7 @@ export interface RoomSettingsEvent {
   sentAt: string
   revision: number
   payload: SharedSetupPatch
+  settings?: SharedSetupSettings
 }
 
 export interface RoomLifecycleEvent {

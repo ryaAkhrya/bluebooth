@@ -1,6 +1,6 @@
 begin;
 
-select plan(9);
+select plan(10);
 
 insert into auth.users (
   id, instance_id, aud, role, is_anonymous, created_at, updated_at
@@ -57,7 +57,7 @@ select lives_ok(
   'a partner can join the room'
 );
 
-select lives_ok(
+select throws_ok(
   $$
     select * from public.update_room_settings(
       (select room_id from phase04_room_access),
@@ -65,7 +65,28 @@ select lives_ok(
       '{"selectedFrame":"powder-blue"}'::jsonb
     )
   $$,
-  'an active partner can update an allowlisted setting'
+  '42501',
+  'host_required',
+  'a partner cannot update shared booth settings'
+);
+
+reset role;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"44444444-4444-4444-8444-444444444444","role":"authenticated"}',
+  true
+);
+set local role authenticated;
+
+select lives_ok(
+  $$
+    select * from public.update_room_settings(
+      (select room_id from phase04_room_access),
+      0,
+      '{"cameraSettings":{"mirror":false,"brightness":1.1,"contrast":1,"saturation":1,"warmth":0,"zoom":1,"fit":"cover","filter":"original"}}'::jsonb
+    )
+  $$,
+  'the host can update synchronized camera settings'
 );
 
 select throws_ok(
@@ -122,7 +143,7 @@ select throws_ok(
     )
   $$,
   '42501',
-  'membership_required',
+  'host_required',
   'a non-member cannot change room lifecycle state'
 );
 

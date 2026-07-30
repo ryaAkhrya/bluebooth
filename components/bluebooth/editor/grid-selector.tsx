@@ -43,6 +43,7 @@ export function GridSelector() {
           <button
             key={preset.id}
             className={`bb-grid-card ${state.selectedGrid === preset.id ? 'is-selected' : ''}`}
+            disabled={!room.canControlBooth}
             aria-pressed={state.selectedGrid === preset.id}
             onClick={() => {
               media.clearCaptures()

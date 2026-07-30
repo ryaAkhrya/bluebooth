@@ -157,7 +157,7 @@
 .bb-composition-inner-bg { position: absolute; z-index: 0; }
 .bb-composition-grid { position: absolute; inset: 0; width: 100%; height: 100%; }
 .bb-composition-slot { position: absolute; z-index: 2; overflow: hidden; min-width: 0; min-height: 0; border-style: solid; background: #dceeff; }
-.bb-composition-slot > video, .bb-composition-slot > img, .bb-split-feed video { width: 100%; height: 100%; object-fit: cover; }
+.bb-composition-slot > video, .bb-composition-slot > img, .bb-split-feed video, .bb-split-feed img { width: 100%; height: 100%; object-fit: cover; }
 .bb-composition-slot .bb-demo-feed { min-height: 100%; }
 .bb-split-feed { display: grid; width: 100%; height: 100%; grid-template-columns: 1fr 1fr; }
 .bb-split-feed > * { min-width: 0; overflow: hidden; }
@@ -210,6 +210,10 @@
 .bb-session-thumbs div { display: grid; overflow: hidden; width: 58px; height: 44px; flex: 0 0 auto; place-items: center; border: 2px solid var(--bb-border); border-radius: 8px; background: #fff; color: var(--bb-text-2); }
 .bb-session-thumbs div.is-current { border-color: var(--bb-blue); }
 .bb-session-thumbs img { width: 100%; height: 100%; object-fit: cover; }
+.bb-capture-readiness { display: flex; width: min(680px, 100%); flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 14px; border: 1px solid var(--bb-border); border-radius: 14px; background: #fff; padding: 12px 16px; color: var(--bb-text-2); font-size: 13px; text-align: center; }
+.bb-capture-readiness strong { color: var(--bb-text); }
+.bb-capture-readiness .is-error { flex-basis: 100%; color: #9b3c3c; }
+.bb-capture-readiness > div { display: flex; gap: 8px; }
 
 .bb-centered-heading { display: grid; justify-items: center; gap: 7px; margin-bottom: 26px; text-align: center; }
 .bb-centered-heading h1 { font-size: 34px; }
@@ -225,6 +229,7 @@
 .bb-final { display: flex; flex-direction: column; align-items: center; }
 .bb-final-canvas { display: grid; width: min(650px, 100%); max-height: 65vh; place-items: center; padding: 14px; border: 1px solid var(--bb-border); border-radius: 18px; background: #fff; box-shadow: var(--bb-shadow); }
 .bb-final-canvas canvas { display: block; max-width: 100%; max-height: calc(65vh - 28px); }
+.bb-final-canvas > img { display: block; max-width: 100%; max-height: calc(65vh - 28px); }
 .bb-final-actions { margin: 22px 0 8px; }
 .bb-previous-result { display: grid; gap: 10px; }
 .bb-previous-result img { max-width: 100%; max-height: 55vh; margin: auto; object-fit: contain; }

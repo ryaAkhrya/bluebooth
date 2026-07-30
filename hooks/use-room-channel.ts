@@ -8,6 +8,7 @@ import {
   isRoomSettingsEvent,
 } from '@/lib/supabase/realtime'
 import { WEBRTC_SIGNAL_TYPES, isWebRtcSignal } from '@/lib/bluebooth/webrtc'
+import { CAPTURE_EVENT_TYPES, isCaptureEvent } from '@/lib/bluebooth/capture-events'
 import type { Database } from '@/types/database'
 import type {
   RoomConnectionStatus,
@@ -16,6 +17,7 @@ import type {
   RoomSettingsEvent,
 } from '@/types/room'
 import type { WebRtcSignal } from '@/types/webrtc'
+import type { CaptureEvent } from '@/types/capture'
 
 interface UseRoomChannelInput {
   client: SupabaseClient<Database> | null
@@ -24,6 +26,7 @@ interface UseRoomChannelInput {
   onSettings: (event: RoomSettingsEvent) => void
   onLifecycle: (event: RoomLifecycleEvent) => void
   onWebRtcSignal: (signal: WebRtcSignal) => void
+  onCaptureEvent: (event: CaptureEvent) => void
   onReconnect: () => void
 }
 
@@ -34,6 +37,7 @@ export function useRoomChannel({
   onSettings,
   onLifecycle,
   onWebRtcSignal,
+  onCaptureEvent,
   onReconnect,
 }: UseRoomChannelInput) {
   const [connection, setConnection] = useState<RoomConnectionStatus>('offline')
@@ -45,6 +49,7 @@ export function useRoomChannel({
     onSettings,
     onLifecycle,
     onWebRtcSignal,
+    onCaptureEvent,
     onReconnect,
   })
   const presenceUserId = initialPresence?.userId ?? null
@@ -54,9 +59,10 @@ export function useRoomChannel({
       onSettings,
       onLifecycle,
       onWebRtcSignal,
+      onCaptureEvent,
       onReconnect,
     }
-  }, [onLifecycle, onReconnect, onSettings, onWebRtcSignal])
+  }, [onCaptureEvent, onLifecycle, onReconnect, onSettings, onWebRtcSignal])
 
   useEffect(() => {
     presenceRef.current = initialPresence
@@ -122,6 +128,14 @@ export function useRoomChannel({
       channel.on('broadcast', { event }, (message) => {
         if (isWebRtcSignal(message.payload) && message.payload.type === event) {
           callbacksRef.current.onWebRtcSignal(message.payload)
+        }
+      })
+    }
+
+    for (const event of CAPTURE_EVENT_TYPES) {
+      channel.on('broadcast', { event }, (message) => {
+        if (isCaptureEvent(message.payload) && message.payload.type === event) {
+          callbacksRef.current.onCaptureEvent(message.payload)
         }
       })
     }
@@ -207,6 +221,18 @@ export function useRoomChannel({
     )
   }, [])
 
+  const sendCaptureEvent = useCallback(async (event: CaptureEvent) => {
+    const channel = channelRef.current
+    if (!channel || !connectedRef.current) return false
+    return (
+      (await channel.send({
+        type: 'broadcast',
+        event: event.type,
+        payload: event,
+      })) === 'ok'
+    )
+  }, [])
+
   return {
     connection: roomId ? connection : 'offline',
     presence: roomId ? presence : [],
@@ -214,6 +240,7 @@ export function useRoomChannel({
     sendSettings,
     sendLifecycle,
     sendWebRtcSignal,
+    sendCaptureEvent,
     disconnect,
   }
 }

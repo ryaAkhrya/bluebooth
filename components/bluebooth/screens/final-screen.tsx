@@ -1,7 +1,7 @@
 'use client'
 
 import { Download, Save } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
 import { useLocalMedia } from '@/components/bluebooth/state/local-media'
 import { useToast } from '@/components/bluebooth/ui/toast-provider'
@@ -10,8 +10,185 @@ import { getGridPreset } from '@/lib/bluebooth/presets/grids'
 import { getFramePreset } from '@/lib/bluebooth/presets/frames'
 import { buildResultFilename } from '@/lib/bluebooth/image'
 import { useLocalResult } from '@/hooks/use-local-result'
+import type { SynchronizedCaptureController } from '@/hooks/use-synchronized-capture'
+import { resolveCapturedSlotImages } from '@/lib/bluebooth/capture-events'
 
-export function FinalScreen() {
+export function FinalScreen({
+  synchronizedCapture,
+}: {
+  synchronizedCapture: SynchronizedCaptureController
+}) {
+  if (synchronizedCapture.enabled && synchronizedCapture.configuration) {
+    return <SynchronizedFinalScreen synchronizedCapture={synchronizedCapture} />
+  }
+  return <LocalFinalScreen />
+}
+
+function SynchronizedFinalScreen({
+  synchronizedCapture,
+}: {
+  synchronizedCapture: SynchronizedCaptureController
+}) {
+  const { state } = useBluebooth()
+  const media = useLocalMedia()
+  const toast = useToast()
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const renderingKeyRef = useRef<string | null>(null)
+  const configuration = synchronizedCapture.configuration
+  const session = synchronizedCapture.snapshot?.session
+  const total = session?.shot_count ?? 0
+  const grid = getGridPreset(configuration?.selectedGrid ?? state.selectedGrid)
+  const frame = getFramePreset(configuration?.selectedFrame ?? state.selectedFrame)
+  const slotImages = useMemo(
+    () =>
+      configuration
+        ? resolveCapturedSlotImages(
+            configuration,
+            total,
+            synchronizedCapture.sharedCaptureUrls,
+          )
+        : [],
+    [configuration, synchronizedCapture.sharedCaptureUrls, total],
+  )
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (
+      !canvas ||
+      !configuration ||
+      !session ||
+      !synchronizedCapture.isHost ||
+      synchronizedCapture.snapshot?.result ||
+      slotImages.some((source) => !source)
+    ) {
+      return
+    }
+    const key = `${session.id}:${session.revision}`
+    if (renderingKeyRef.current === key) return
+    renderingKeyRef.current = key
+    let active = true
+    void renderComposition(canvas, {
+      preset: grid,
+      frame,
+      layout: configuration.layout,
+      frameOptions: configuration.frameOptions,
+      customFrame:
+        configuration.customFrame && synchronizedCapture.customFrameUrl
+          ? {
+              ...configuration.customFrame,
+              source: synchronizedCapture.customFrameUrl,
+            }
+          : null,
+      slotImages,
+      roomCode: state.roomCode,
+      roomName: state.roomName,
+    })
+      .then(async (blob) => {
+        if (!active) return
+        media.setFinalResult(blob, grid.output[0], grid.output[1])
+        const saved = await synchronizedCapture.finalizeResult(
+          blob,
+          grid.output[0],
+          grid.output[1],
+        )
+        if (!saved && active) {
+          renderingKeyRef.current = null
+          toast('Final image upload failed. Retry from this screen.', 'error')
+        }
+      })
+      .catch(() => {
+        renderingKeyRef.current = null
+        if (active) toast('Final image could not be rendered.', 'error')
+      })
+    return () => {
+      active = false
+    }
+  }, [
+    configuration,
+    frame,
+    grid,
+    media,
+    session,
+    slotImages,
+    state.roomCode,
+    state.roomName,
+    synchronizedCapture,
+    toast,
+  ])
+
+  const download = () => {
+    const source =
+      synchronizedCapture.resultUrl ?? media.finalResult?.url ?? null
+    if (!source) return
+    const anchor = document.createElement('a')
+    anchor.href = source
+    anchor.download = buildResultFilename(state.roomCode, new Date())
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+  }
+
+  return (
+    <main className="bb-final bb-screen">
+      <header className="bb-centered-heading">
+        <span className="bb-eyebrow">Shared final result</span>
+        <h1>Your Bluebooth photo</h1>
+        <p>
+          {grid.name} · {grid.output.join('×')} px
+        </p>
+      </header>
+      <div className="bb-final-canvas">
+        {synchronizedCapture.isHost ? (
+          <canvas ref={canvasRef} aria-label="Final composed photobooth image" />
+        ) : synchronizedCapture.resultUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={synchronizedCapture.resultUrl}
+            alt="Final composed photobooth result"
+          />
+        ) : (
+          <div className="bb-session-fallback">
+            Waiting for the host to finish the shared result
+          </div>
+        )}
+      </div>
+      <div className="bb-final-actions">
+        <button
+          className="bb-primary-button"
+          disabled={
+            !synchronizedCapture.resultUrl && !media.finalResult
+          }
+          onClick={download}
+        >
+          <Download /> Download PNG
+        </button>
+      </div>
+      {synchronizedCapture.state.error && (
+        <div className="bb-capture-readiness">
+          <span className="is-error">{synchronizedCapture.state.error}</span>
+          <button
+            className="bb-secondary-button"
+            onClick={() => {
+              if (synchronizedCapture.isHost && media.finalResult) {
+                void synchronizedCapture.finalizeResult(
+                  media.finalResult.blob,
+                  grid.output[0],
+                  grid.output[1],
+                )
+              } else {
+                void synchronizedCapture.refresh()
+              }
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+    </main>
+  )
+}
+
+function LocalFinalScreen() {
   const { state, dispatch } = useBluebooth()
   const toast = useToast()
   const {

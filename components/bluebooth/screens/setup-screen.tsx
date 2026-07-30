@@ -14,6 +14,7 @@ import { useLocalMedia } from '@/components/bluebooth/state/local-media'
 import { useRoom } from '@/components/bluebooth/state/room-state'
 import type { CameraStatus, SetupStep } from '@/types/bluebooth'
 import type { WebRtcConnectionState } from '@/types/webrtc'
+import type { SynchronizedCaptureController } from '@/hooks/use-synchronized-capture'
 
 const steps: Array<{ id: SetupStep; label: string; icon: typeof Grid2X2 }> = [
   { id: 'layout', label: 'Layout', icon: Grid2X2 },
@@ -30,6 +31,7 @@ export function SetupScreen({
   remoteStream,
   peerConnectionState,
   onRetryPeer,
+  synchronizedCapture,
   onRequestCamera,
 }: {
   stream: MediaStream | null
@@ -39,6 +41,7 @@ export function SetupScreen({
   remoteStream: MediaStream | null
   peerConnectionState: WebRtcConnectionState
   onRetryPeer: () => void
+  synchronizedCapture: SynchronizedCaptureController
   onRequestCamera: (deviceId?: string) => Promise<void>
 }) {
   const { state, dispatch } = useBluebooth()
@@ -74,13 +77,16 @@ export function SetupScreen({
               />
             )}
             <div className="bb-segmented" aria-label="Camera source mode">
-              {(['user', 'partner', 'split', 'alternate'] as const).map((mode) => <button key={mode} className={state.cameraMode === mode ? 'is-active' : ''} onClick={() => dispatch({ type: 'set-camera-mode', mode })}>{mode === 'user' ? 'You' : mode[0].toUpperCase() + mode.slice(1)}</button>)}
+              {(['user', 'partner', 'split', 'alternate'] as const).map((mode) => <button disabled={!room.canControlBooth} key={mode} className={state.cameraMode === mode ? 'is-active' : ''} onClick={() => room.updateSharedSettings({ cameraMode: mode })}>{mode === 'user' ? 'You' : mode[0].toUpperCase() + mode.slice(1)}</button>)}
             </div>
-            <button className="bb-icon-button" aria-label="Swap camera positions" onClick={() => dispatch({ type: 'toggle-swap' })}><RotateCcw /></button>
+            <button disabled={!room.canControlBooth} className="bb-icon-button" aria-label="Swap camera positions" onClick={() => room.updateSharedSettings({ swap: !state.swap })}><RotateCcw /></button>
           </div>
           <CompositionPreview stream={stream} remoteStream={remoteStream} />
         </aside>
         <section className="bb-editor-panel">
+          {!room.canControlBooth && (
+            <div className="bb-ready-note">The host controls the booth setup.</div>
+          )}
           {state.setupStep === 'layout' && <><header><h2>Choose a grid</h2><p>Pick a format, then adjust its spacing.</p></header><GridSelector /><div className="bb-control-card"><LayoutControls /></div></>}
           {state.setupStep === 'frame' && <><header><h2>Choose a frame</h2><p>Use a built-in style or upload your own.</p></header><FrameSelector /></>}
           {state.setupStep === 'camera' && <><header><h2>Camera settings</h2><p>Adjust your local camera preview.</p></header><CameraControls status={cameraStatus} devices={devices} deviceId={deviceId} onRequest={onRequestCamera} /></>}
@@ -90,13 +96,41 @@ export function SetupScreen({
       <div className="bb-bottom-bar">
         <span>
           {connectedCount}/2 connected
+          {room.mode === 'online' && !room.canControlBooth && ' · Following host setup'}
           {room.mode === 'online' && room.settingsStatus === 'saving' && ' · Saving setup…'}
           {room.mode === 'online' && room.settingsStatus === 'saved' && ' · Setup saved'}
           {room.mode === 'online' && room.settingsStatus === 'error' && (
             <> · Setup not saved <button className="bb-text-button" onClick={room.retrySettings}>Retry</button></>
           )}
         </span>
-        <button className="bb-primary-button" onClick={() => { media.clearCaptures(); media.clearFinalResult(); dispatch({ type: 'reset-session' }); dispatch({ type: 'navigate', screen: 'session' }) }}>Start session <ArrowRight /></button>
+        <button
+          className="bb-primary-button"
+          disabled={
+            synchronizedCapture.enabled &&
+            (!synchronizedCapture.isHost ||
+              synchronizedCapture.state.operation === 'preparing')
+          }
+          onClick={() => {
+            if (synchronizedCapture.enabled) {
+              if (synchronizedCapture.isHost) {
+                void synchronizedCapture.startSession()
+              }
+              return
+            }
+            media.clearCaptures()
+            media.clearFinalResult()
+            dispatch({ type: 'reset-session' })
+            dispatch({ type: 'navigate', screen: 'session' })
+          }}
+        >
+          {synchronizedCapture.enabled && !synchronizedCapture.isHost
+            ? 'Waiting for host'
+            : synchronizedCapture.enabled &&
+                synchronizedCapture.state.operation === 'preparing'
+              ? 'Preparing session…'
+              : 'Start session'}{' '}
+          <ArrowRight />
+        </button>
       </div>
     </main>
   )

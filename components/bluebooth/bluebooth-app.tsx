@@ -19,6 +19,7 @@ import { SetupScreen } from '@/components/bluebooth/screens/setup-screen'
 import { WaitingRoomScreen } from '@/components/bluebooth/screens/waiting-room-screen'
 import { useCamera } from '@/hooks/use-camera'
 import { useWebRtcPeer } from '@/hooks/use-webrtc-peer'
+import { useSynchronizedCapture } from '@/hooks/use-synchronized-capture'
 import './bluebooth.css'
 
 export function BlueboothApp({ initialJoinCode }: { initialJoinCode?: string }) {
@@ -59,6 +60,10 @@ function BlueboothAppContent() {
     sendSignal: room.sendWebRtcSignal,
     subscribeSignals: room.subscribeWebRtcSignals,
   })
+  const synchronizedCapture = useSynchronizedCapture({
+    cameraStatus: camera.status,
+    localStream: camera.stream,
+  })
   const leave = async () => {
     peer.close()
     camera.stop()
@@ -73,6 +78,16 @@ function BlueboothAppContent() {
       <AppHeader
         onLeave={() => void leave()}
         onCamera={() => {
+          if (
+            synchronizedCapture.enabled &&
+            synchronizedCapture.snapshot &&
+            !['review', 'completed', 'cancelled'].includes(
+              synchronizedCapture.snapshot.session.status,
+            )
+          ) {
+            toast('Finish or cancel the synchronized capture before changing cameras.')
+            return
+          }
           dispatch({ type: 'set-setup-step', step: 'camera' })
           dispatch({ type: 'navigate', screen: 'setup' })
         }}
@@ -82,10 +97,10 @@ function BlueboothAppContent() {
       {state.screen === 'create' && <CreateRoomScreen onStartCamera={() => camera.request()} />}
       {state.screen === 'join' && <JoinRoomScreen onStartCamera={() => camera.request()} />}
       {state.screen === 'waiting' && <WaitingRoomScreen stream={camera.stream} cameraStatus={camera.status} remoteStream={peer.remoteStream} peerConnectionState={peer.connectionState} onRetryPeer={peer.retry} onStartCamera={() => camera.request()} />}
-      {state.screen === 'setup' && <SetupScreen stream={camera.stream} cameraStatus={camera.status} devices={camera.devices} deviceId={camera.deviceId} remoteStream={peer.remoteStream} peerConnectionState={peer.connectionState} onRetryPeer={peer.retry} onRequestCamera={camera.request} />}
-      {state.screen === 'session' && <SessionScreen stream={camera.stream} />}
-      {state.screen === 'review' && <ReviewScreen stream={camera.stream} />}
-      {state.screen === 'final' && <FinalScreen />}
+      {state.screen === 'setup' && <SetupScreen stream={camera.stream} cameraStatus={camera.status} devices={camera.devices} deviceId={camera.deviceId} remoteStream={peer.remoteStream} peerConnectionState={peer.connectionState} onRetryPeer={peer.retry} onRequestCamera={camera.request} synchronizedCapture={synchronizedCapture} />}
+      {state.screen === 'session' && <SessionScreen stream={camera.stream} synchronizedCapture={synchronizedCapture} />}
+      {state.screen === 'review' && <ReviewScreen stream={camera.stream} synchronizedCapture={synchronizedCapture} />}
+      {state.screen === 'final' && <FinalScreen synchronizedCapture={synchronizedCapture} />}
     </div>
   )
 }

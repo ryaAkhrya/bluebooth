@@ -122,8 +122,13 @@ export function WaitingRoomScreen({
             : 'Waiting for your partner'}
         </div>
       )}
-      <button className="bb-primary-button" disabled={!partnerOnline || entering} onClick={() => void enterSetup()}>
-        {entering ? 'Opening setup…' : 'Set up booth'} <ArrowRight />
+      <button className="bb-primary-button" disabled={!partnerOnline || entering || !room.canControlBooth} onClick={() => void enterSetup()}>
+        {!room.canControlBooth
+          ? 'Waiting for host'
+          : entering
+            ? 'Opening setup…'
+            : 'Set up booth'}{' '}
+        <ArrowRight />
       </button>
     </main>
   )

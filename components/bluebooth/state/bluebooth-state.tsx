@@ -9,11 +9,7 @@ import {
 import type {
   AppScreen,
   BlueboothState,
-  CameraMode,
-  CameraSettings,
   CustomFrame,
-  FrameOptions,
-  LayoutSettings,
   Participant,
   SetupStep,
 } from '@/types/bluebooth'
@@ -25,19 +21,8 @@ type Action =
   | { type: 'set-participants'; participants: Participant[] }
   | { type: 'apply-shared-setup'; settings: SharedSetupSettings }
   | { type: 'apply-shared-setup-patch'; patch: SharedSetupPatch }
-  | { type: 'select-grid'; id: string }
-  | { type: 'select-frame'; id: string }
   | { type: 'set-custom-frame'; frame: CustomFrame | null }
   | { type: 'patch-custom-frame'; patch: Partial<CustomFrame> }
-  | { type: 'patch-frame-options'; patch: Partial<FrameOptions> }
-  | { type: 'patch-layout'; patch: Partial<LayoutSettings> }
-  | { type: 'set-camera-mode'; mode: CameraMode }
-  | { type: 'toggle-swap' }
-  | { type: 'patch-camera'; patch: Partial<CameraSettings> }
-  | { type: 'set-timer'; timer: 3 | 5 | 10 }
-  | { type: 'set-shot-delay'; delay: number }
-  | { type: 'set-timer-sound'; enabled: boolean }
-  | { type: 'set-flash'; enabled: boolean }
   | { type: 'set-retake'; index: number | null }
   | { type: 'reset-session' }
   | { type: 'reset-room' }
@@ -102,6 +87,13 @@ function reducer(state: BlueboothState, action: Action): BlueboothState {
         selectedFrame: action.settings.selectedFrame,
         timer: action.settings.timer,
         layout: { ...action.settings.layout },
+        frameOptions: { ...action.settings.frameOptions },
+        cameraMode: action.settings.cameraMode,
+        swap: action.settings.swap,
+        cameraSettings: { ...action.settings.cameraSettings },
+        shotDelay: action.settings.shotDelay,
+        timerSound: action.settings.timerSound,
+        flash: action.settings.flash,
       }
     case 'apply-shared-setup-patch': {
       const shared = applySharedSetupPatch(
@@ -110,6 +102,13 @@ function reducer(state: BlueboothState, action: Action): BlueboothState {
           selectedFrame: state.selectedFrame,
           timer: state.timer,
           layout: state.layout,
+          frameOptions: state.frameOptions,
+          cameraMode: state.cameraMode,
+          swap: state.swap,
+          cameraSettings: state.cameraSettings,
+          shotDelay: state.shotDelay,
+          timerSound: state.timerSound,
+          flash: state.flash,
         },
         action.patch,
       )
@@ -119,36 +118,21 @@ function reducer(state: BlueboothState, action: Action): BlueboothState {
         selectedFrame: shared.selectedFrame,
         timer: shared.timer,
         layout: shared.layout,
+        frameOptions: shared.frameOptions,
+        cameraMode: shared.cameraMode,
+        swap: shared.swap,
+        cameraSettings: shared.cameraSettings,
+        shotDelay: shared.shotDelay,
+        timerSound: shared.timerSound,
+        flash: shared.flash,
       }
     }
-    case 'select-grid':
-      return { ...state, selectedGrid: action.id }
-    case 'select-frame':
-      return { ...state, selectedFrame: action.id }
     case 'set-custom-frame':
       return { ...state, customFrame: action.frame }
     case 'patch-custom-frame':
       return state.customFrame
         ? { ...state, customFrame: { ...state.customFrame, ...action.patch } }
         : state
-    case 'patch-frame-options':
-      return { ...state, frameOptions: { ...state.frameOptions, ...action.patch } }
-    case 'patch-layout':
-      return { ...state, layout: { ...state.layout, ...action.patch } }
-    case 'set-camera-mode':
-      return { ...state, cameraMode: action.mode }
-    case 'toggle-swap':
-      return { ...state, swap: !state.swap }
-    case 'patch-camera':
-      return { ...state, cameraSettings: { ...state.cameraSettings, ...action.patch } }
-    case 'set-timer':
-      return { ...state, timer: action.timer }
-    case 'set-shot-delay':
-      return { ...state, shotDelay: action.delay }
-    case 'set-timer-sound':
-      return { ...state, timerSound: action.enabled }
-    case 'set-flash':
-      return { ...state, flash: action.enabled }
     case 'set-retake':
       return { ...state, retakeIndex: action.index }
     case 'reset-session':

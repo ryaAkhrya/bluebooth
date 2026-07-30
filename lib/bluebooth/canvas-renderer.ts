@@ -7,6 +7,7 @@ import type {
   GridPreset,
   LayoutSettings,
 } from '@/types/bluebooth'
+import type { ResolvedSlotImage } from '@/types/capture'
 
 export type RenderLayer = 'background' | 'behindFrame' | 'photos' | 'frame' | 'frontFrame' | 'text'
 
@@ -16,7 +17,7 @@ export interface RenderCompositionInput {
   layout: LayoutSettings
   frameOptions: FrameOptions
   customFrame: (CustomFrame & { source: string }) | null
-  slotImages: readonly (string | null)[]
+  slotImages: readonly ResolvedSlotImage[]
   roomCode: string
   roomName: string
   date?: Date
@@ -136,9 +137,18 @@ export async function renderComposition(
   const context = canvas.getContext('2d')
   if (!context) throw new Error('Canvas is unavailable')
 
-  const imagePromises = geometry.slots.map((_, index) => {
+  const imagePromises = geometry.slots.map(async (_, index) => {
     const source = input.slotImages[index]
-    return source ? loadImage(source) : Promise.resolve(null)
+    if (!source) return null
+    if (typeof source === 'string') return loadImage(source)
+    const [left, right] = await Promise.all([
+      loadImage(source.left),
+      loadImage(source.right),
+    ])
+    return {
+      left,
+      right,
+    }
   })
   const customFramePromise = customFrame ? loadImage(customFrame.source) : Promise.resolve(null)
   const [images, customFrameImage] = await Promise.all([
@@ -173,8 +183,32 @@ export async function renderComposition(
     pathRoundedRect(context, rect)
     context.clip()
     const image = images[index]
-    if (image) {
+    if (image instanceof HTMLImageElement) {
       drawImageInRect(context, image, rect)
+    } else if (image) {
+      const halfWidth = rect.width / 2
+      context.save()
+      context.beginPath()
+      context.rect(rect.x, rect.y, halfWidth, rect.height)
+      context.clip()
+      drawImageInRect(context, image.left, {
+        x: rect.x,
+        y: rect.y,
+        width: halfWidth,
+        height: rect.height,
+      })
+      context.restore()
+      context.save()
+      context.beginPath()
+      context.rect(rect.x + halfWidth, rect.y, halfWidth, rect.height)
+      context.clip()
+      drawImageInRect(context, image.right, {
+        x: rect.x + halfWidth,
+        y: rect.y,
+        width: halfWidth,
+        height: rect.height,
+      })
+      context.restore()
     } else {
       const gradient = context.createLinearGradient(
         rect.x,

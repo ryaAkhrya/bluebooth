@@ -16,7 +16,7 @@ export function FrameSelector() {
   const room = useRoom()
   const toast = useToast()
   const chooseFile = async (file?: File) => {
-    if (!file) return
+    if (!file || !room.canControlBooth) return
     const basicValidation = validateCustomFrameFile(file)
     if (!basicValidation.valid) {
       toast(basicValidation.message, 'error')
@@ -66,6 +66,7 @@ export function FrameSelector() {
           <button
             key={frame.id}
             className={`bb-frame-card ${state.selectedFrame === frame.id ? 'is-selected' : ''}`}
+            disabled={!room.canControlBooth}
             aria-pressed={state.selectedFrame === frame.id}
             onClick={() => room.updateSharedSettings({ selectedFrame: frame.id })}
           >
@@ -81,6 +82,7 @@ export function FrameSelector() {
         <span>PNG or WebP</span>
         <input
           type="file"
+          disabled={!room.canControlBooth}
           accept="image/png,image/webp"
           onChange={(event) => {
             void chooseFile(event.target.files?.[0])
@@ -94,6 +96,7 @@ export function FrameSelector() {
             <span><strong>{state.customFrame.name}</strong><small>Custom frame</small></span>
             <button
               className="bb-text-button"
+              disabled={!room.canControlBooth}
               onClick={() => {
                 media.clearCustomFrame()
                 dispatch({ type: 'set-custom-frame', frame: null })
@@ -102,12 +105,12 @@ export function FrameSelector() {
               Remove
             </button>
           </div>
-          <Range label="Opacity" value={state.customFrame.opacity} min={0} max={100} onChange={(opacity) => dispatch({ type: 'patch-custom-frame', patch: { opacity } })} />
-          <Range label="Scale" value={state.customFrame.scale} min={50} max={150} onChange={(scale) => dispatch({ type: 'patch-custom-frame', patch: { scale } })} />
-          <Range label="Position X" value={state.customFrame.x} min={-50} max={50} onChange={(x) => dispatch({ type: 'patch-custom-frame', patch: { x } })} />
-          <Range label="Position Y" value={state.customFrame.y} min={-50} max={50} onChange={(y) => dispatch({ type: 'patch-custom-frame', patch: { y } })} />
+          <Range disabled={!room.canControlBooth} label="Opacity" value={state.customFrame.opacity} min={0} max={100} onChange={(opacity) => dispatch({ type: 'patch-custom-frame', patch: { opacity } })} />
+          <Range disabled={!room.canControlBooth} label="Scale" value={state.customFrame.scale} min={50} max={150} onChange={(scale) => dispatch({ type: 'patch-custom-frame', patch: { scale } })} />
+          <Range disabled={!room.canControlBooth} label="Position X" value={state.customFrame.x} min={-50} max={50} onChange={(x) => dispatch({ type: 'patch-custom-frame', patch: { x } })} />
+          <Range disabled={!room.canControlBooth} label="Position Y" value={state.customFrame.y} min={-50} max={50} onChange={(y) => dispatch({ type: 'patch-custom-frame', patch: { y } })} />
           <label className="bb-field">Fit
-            <select value={state.customFrame.fit} onChange={(event) => dispatch({ type: 'patch-custom-frame', patch: { fit: event.target.value as 'cover' | 'contain' | 'fill' } })}>
+            <select disabled={!room.canControlBooth} value={state.customFrame.fit} onChange={(event) => dispatch({ type: 'patch-custom-frame', patch: { fit: event.target.value as 'cover' | 'contain' | 'fill' } })}>
               <option value="contain">Contain</option>
               <option value="cover">Cover</option>
               <option value="fill">Stretch</option>
@@ -115,25 +118,25 @@ export function FrameSelector() {
           </label>
           <label className="bb-switch-row">
             <span>Frame in front of photos</span>
-            <input type="checkbox" checked={state.customFrame.front} onChange={(event) => dispatch({ type: 'patch-custom-frame', patch: { front: event.target.checked } })} />
+            <input disabled={!room.canControlBooth} type="checkbox" checked={state.customFrame.front} onChange={(event) => dispatch({ type: 'patch-custom-frame', patch: { front: event.target.checked } })} />
           </label>
         </div>
       )}
       <div className="bb-control-card">
         <label className="bb-field">Caption
-          <input maxLength={30} value={state.frameOptions.caption} placeholder={`Room ${state.roomCode}`} onChange={(event) => dispatch({ type: 'patch-frame-options', patch: { caption: event.target.value } })} />
+          <input disabled={!room.canControlBooth} maxLength={30} value={state.frameOptions.caption} placeholder={`Room ${state.roomCode}`} onChange={(event) => room.updateSharedSettings({ frameOptions: { ...state.frameOptions, caption: event.target.value } })} />
         </label>
         <label className="bb-field">Border color
-          <input type="color" value={state.frameOptions.borderColor} onChange={(event) => dispatch({ type: 'patch-frame-options', patch: { borderColor: event.target.value } })} />
+          <input disabled={!room.canControlBooth} type="color" value={state.frameOptions.borderColor} onChange={(event) => room.updateSharedSettings({ frameOptions: { ...state.frameOptions, borderColor: event.target.value } })} />
         </label>
-        <Range label="Border" value={state.frameOptions.borderWidth} min={0} max={24} onChange={(borderWidth) => dispatch({ type: 'patch-frame-options', patch: { borderWidth } })} />
-        <label className="bb-switch-row"><span>Show date</span><input type="checkbox" checked={state.frameOptions.showDate} onChange={(event) => dispatch({ type: 'patch-frame-options', patch: { showDate: event.target.checked } })} /></label>
-        <label className="bb-switch-row"><span>Show room name</span><input type="checkbox" checked={state.frameOptions.showRoom} onChange={(event) => dispatch({ type: 'patch-frame-options', patch: { showRoom: event.target.checked } })} /></label>
+        <Range disabled={!room.canControlBooth} label="Border" value={state.frameOptions.borderWidth} min={0} max={24} onChange={(borderWidth) => room.updateSharedSettings({ frameOptions: { ...state.frameOptions, borderWidth } })} />
+        <label className="bb-switch-row"><span>Show date</span><input disabled={!room.canControlBooth} type="checkbox" checked={state.frameOptions.showDate} onChange={(event) => room.updateSharedSettings({ frameOptions: { ...state.frameOptions, showDate: event.target.checked } })} /></label>
+        <label className="bb-switch-row"><span>Show room name</span><input disabled={!room.canControlBooth} type="checkbox" checked={state.frameOptions.showRoom} onChange={(event) => room.updateSharedSettings({ frameOptions: { ...state.frameOptions, showRoom: event.target.checked } })} /></label>
       </div>
     </>
   )
 }
 
-function Range({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
-  return <label className="bb-range"><span>{label}<output>{value}</output></span><input type="range" value={value} min={min} max={max} onChange={(event) => onChange(Number(event.target.value))} /></label>
+function Range({ label, value, min, max, disabled = false, onChange }: { label: string; value: number; min: number; max: number; disabled?: boolean; onChange: (value: number) => void }) {
+  return <label className="bb-range"><span>{label}<output>{value}</output></span><input disabled={disabled} type="range" value={value} min={min} max={max} onChange={(event) => onChange(Number(event.target.value))} /></label>
 }

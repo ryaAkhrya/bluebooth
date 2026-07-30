@@ -1,4 +1,7 @@
-import { isSharedSetupPatch } from '@/lib/bluebooth/shared-settings'
+import {
+  isSharedSetupPatch,
+  isSharedSetupSettings,
+} from '@/lib/bluebooth/shared-settings'
 import type {
   RoomLifecycleEvent,
   RoomPresence,
@@ -49,7 +52,8 @@ export function isRoomSettingsEvent(value: unknown): value is RoomSettingsEvent 
     typeof value.revision === 'number' &&
     Number.isSafeInteger(value.revision) &&
     value.revision >= 0 &&
-    isSharedSetupPatch(value.payload)
+    isSharedSetupPatch(value.payload) &&
+    (!('settings' in value) || isSharedSetupSettings(value.settings))
   )
 }
 

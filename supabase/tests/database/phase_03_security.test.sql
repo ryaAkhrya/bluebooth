@@ -160,13 +160,15 @@ select lives_ok(
      ) $$,
   'an active partner can update shared setup settings'
 );
-select lives_ok(
+select throws_ok(
   $$ insert into storage.objects(bucket_id, name)
      values (
        'bluebooth-media',
        'rooms/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/sessions/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/raw/22222222-2222-4222-8222-222222222222/1.webp'
      ) $$,
-  'a member can upload into their own raw path'
+  '42501',
+  'new row violates row-level security policy for table "objects"',
+  'raw uploads require a currently scheduled synchronized shot'
 );
 
 reset role;

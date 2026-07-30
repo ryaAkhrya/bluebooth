@@ -21,6 +21,7 @@ import {
   sharedSetupToJson,
   type SharedSetupPatch,
 } from '@/lib/bluebooth/shared-settings'
+import { shouldApplyRoomSnapshot } from '@/lib/bluebooth/room-settings-authority'
 import { getBrowserSupabaseClient } from '@/lib/supabase/client'
 import { RoomServiceError } from '@/lib/supabase/errors'
 import {
@@ -43,6 +44,7 @@ import type {
   RoomSettingsEvent,
 } from '@/types/room'
 import type { WebRtcSignal } from '@/types/webrtc'
+import type { CaptureEvent } from '@/types/capture'
 
 type RoomOperationStatus = 'idle' | 'loading' | 'error'
 type SettingsStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -60,6 +62,7 @@ interface RoomContextValue {
   connection: ReturnType<typeof useRoomChannel>['connection']
   operationStatus: RoomOperationStatus
   settingsStatus: SettingsStatus
+  canControlBooth: boolean
   createRoom: (
     input: { displayName: string; roomName: string },
     forceLocal?: boolean,
@@ -78,6 +81,8 @@ interface RoomContextValue {
   }) => void
   sendWebRtcSignal: (signal: WebRtcSignal) => Promise<boolean>
   subscribeWebRtcSignals: (listener: (signal: WebRtcSignal) => void) => () => void
+  sendCaptureEvent: (event: CaptureEvent) => Promise<boolean>
+  subscribeCaptureEvents: (listener: (event: CaptureEvent) => void) => () => void
 }
 
 const RoomContext = createContext<RoomContextValue | null>(null)
@@ -106,6 +111,8 @@ export function RoomProvider({
   const [operationStatus, setOperationStatus] =
     useState<RoomOperationStatus>('idle')
   const [settingsStatus, setSettingsStatus] = useState<SettingsStatus>('idle')
+  const [pendingSettingsBroadcast, setPendingSettingsBroadcast] =
+    useState<RoomSettingsEvent | null>(null)
   const [presenceMetadata, setPresenceMetadata] = useState<{
     stage: RoomPresenceStage
     cameraReady: boolean
@@ -119,6 +126,7 @@ export function RoomProvider({
   const lifecycleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const syncQueueRef = useRef(Promise.resolve())
   const signalListenersRef = useRef(new Set<(signal: WebRtcSignal) => void>())
+  const captureListenersRef = useRef(new Set<(event: CaptureEvent) => void>())
 
   useEffect(() => {
     roomRef.current = onlineRoom
@@ -137,13 +145,37 @@ export function RoomProvider({
       databaseState: DatabaseRoomState,
       membership: DatabaseRoomState['members'][number],
     ) => {
-      const settings = parseSharedSetup(databaseState.room.shared_settings)
+      const current = roomRef.current
+      const applyIncomingSettings = shouldApplyRoomSnapshot(
+        current
+          ? {
+              roomId: current.room.id,
+              revision: current.settingsRevision,
+            }
+          : null,
+        {
+          roomId: databaseState.room.id,
+          revision: databaseState.room.settings_revision,
+        },
+      )
+      const settings =
+        applyIncomingSettings || !current
+          ? parseSharedSetup(databaseState.room.shared_settings)
+          : current.settings
+      const room =
+        applyIncomingSettings || !current
+          ? databaseState.room
+          : {
+              ...databaseState.room,
+              shared_settings: sharedSetupToJson(current.settings),
+              settings_revision: current.settingsRevision,
+            }
       const next: OnlineRoomState = {
-        room: databaseState.room,
+        room,
         membership,
         members: databaseState.members,
         settings,
-        settingsRevision: databaseState.room.settings_revision,
+        settingsRevision: room.settings_revision,
       }
       roomRef.current = next
       setOnlineRoom(next)
@@ -159,7 +191,9 @@ export function RoomProvider({
         userName: membership.display_name,
         participants: [],
       })
-      dispatch({ type: 'apply-shared-setup', settings })
+      if (applyIncomingSettings || !current) {
+        dispatch({ type: 'apply-shared-setup', settings })
+      }
     },
     [dispatch],
   )
@@ -191,17 +225,25 @@ export function RoomProvider({
       }
       if (
         !current.members.some(
-          (member) => member.user_id === event.senderUserId && member.left_at === null,
+          (member) =>
+            member.user_id === event.senderUserId &&
+            member.role === 'host' &&
+            member.left_at === null,
         )
       ) {
         return
       }
-      if (event.revision <= current.settingsRevision) return
-      if (event.revision !== current.settingsRevision + 1) {
+      if (event.revision < current.settingsRevision) return
+      if (
+        event.revision > current.settingsRevision + 1 &&
+        !event.settings
+      ) {
         void refreshRoom()
         return
       }
-      const settings = applySharedSetupPatch(current.settings, event.payload)
+      const settings =
+        event.settings ??
+        applySharedSetupPatch(current.settings, event.payload)
       const next: OnlineRoomState = {
         ...current,
         room: {
@@ -214,7 +256,7 @@ export function RoomProvider({
       }
       roomRef.current = next
       setOnlineRoom(next)
-      dispatch({ type: 'apply-shared-setup-patch', patch: event.payload })
+      dispatch({ type: 'apply-shared-setup', settings })
     },
     [dispatch, refreshRoom],
   )
@@ -222,17 +264,20 @@ export function RoomProvider({
   const handleLifecycleEvent = useCallback(
     (event: RoomLifecycleEvent) => {
       const current = roomRef.current
+      const sender = current?.members.find(
+        (member) =>
+          member.user_id === event.senderUserId && member.left_at === null,
+      )
       if (
         !current ||
         event.roomId !== current.room.id ||
         event.senderUserId === current.membership.user_id ||
-        !current.members.some(
-          (member) => member.user_id === event.senderUserId && member.left_at === null,
-        )
+        !sender
       ) {
         return
       }
       if (event.event === 'setup-entered') {
+        if (sender.role !== 'host') return
         void refreshRoom()
         dispatch({ type: 'navigate', screen: 'setup' })
       } else {
@@ -259,6 +304,21 @@ export function RoomProvider({
     for (const listener of signalListenersRef.current) listener(signal)
   }, [])
 
+  const handleCaptureEvent = useCallback((event: CaptureEvent) => {
+    const current = roomRef.current
+    if (
+      !current ||
+      event.roomId !== current.room.id ||
+      event.senderUserId === current.membership.user_id ||
+      !current.members.some(
+        (member) => member.user_id === event.senderUserId && member.left_at === null,
+      )
+    ) {
+      return
+    }
+    for (const listener of captureListenersRef.current) listener(event)
+  }, [])
+
   const membership = onlineRoom?.membership
   const currentPresence = useMemo<RoomPresence | null>(() => {
     if (!membership) return null
@@ -279,6 +339,7 @@ export function RoomProvider({
     sendSettings,
     sendLifecycle,
     sendWebRtcSignal: sendChannelWebRtcSignal,
+    sendCaptureEvent: sendChannelCaptureEvent,
     disconnect,
   } = useRoomChannel({
     client,
@@ -287,12 +348,35 @@ export function RoomProvider({
     onSettings: handleSettingsEvent,
     onLifecycle: handleLifecycleEvent,
     onWebRtcSignal: handleWebRtcSignal,
+    onCaptureEvent: handleCaptureEvent,
     onReconnect: refreshRoom,
   })
 
   useEffect(() => {
     if (currentPresence) updatePresence(currentPresence)
   }, [currentPresence, updatePresence])
+
+  useEffect(() => {
+    if (!pendingSettingsBroadcast || connection !== 'connected') return
+    let active = true
+    const retry = async () => {
+      const delivered = await sendSettings(pendingSettingsBroadcast).catch(
+        () => false,
+      )
+      if (!active || !delivered) return
+      setPendingSettingsBroadcast((current) =>
+        current && current.revision <= pendingSettingsBroadcast.revision
+          ? null
+          : current,
+      )
+    }
+    void retry()
+    const timer = setInterval(() => void retry(), 1_000)
+    return () => {
+      active = false
+      clearInterval(timer)
+    }
+  }, [connection, pendingSettingsBroadcast, sendSettings])
 
   const authorizedPresence = useMemo(() => {
     if (!onlineRoom) return []
@@ -498,14 +582,17 @@ export function RoomProvider({
       roomRef.current = next
       setOnlineRoom(next)
       dispatch({ type: 'apply-shared-setup-patch', patch })
-      await sendSettings({
+      const event: RoomSettingsEvent = {
         eventId: crypto.randomUUID(),
         roomId: result.roomId,
         senderUserId: latest.membership.user_id,
         sentAt: new Date().toISOString(),
         revision: result.settingsRevision,
         payload: patch,
-      })
+        settings,
+      }
+      const delivered = await sendSettings(event).catch(() => false)
+      if (!delivered) setPendingSettingsBroadcast(event)
     },
     [client, dispatch, refreshRoom, sendSettings],
   )
@@ -533,8 +620,10 @@ export function RoomProvider({
   const updateSharedSettings = useCallback(
     (patch: SharedSetupPatch) => {
       if (!isSharedSetupPatch(patch)) return
+      const current = roomRef.current
+      if (current && current.membership.role !== 'host') return
       dispatch({ type: 'apply-shared-setup-patch', patch })
-      if (!roomRef.current) return
+      if (!current) return
       pendingPatchesRef.current.set(patchKey(patch), patch)
       setSettingsStatus('saving')
       if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
@@ -552,7 +641,7 @@ export function RoomProvider({
 
   const enterSetup = useCallback(async () => {
     const current = roomRef.current
-    if (!client || !current) return
+    if (!client || !current || current.membership.role !== 'host') return
     await enterRoomSetup(client, current.room.id)
     const event: RoomLifecycleEvent = {
       eventId: crypto.randomUUID(),
@@ -588,7 +677,9 @@ export function RoomProvider({
     setLocalRoomActive(false)
     setOperationStatus('idle')
     setSettingsStatus('idle')
+    setPendingSettingsBroadcast(null)
     signalListenersRef.current.clear()
+    captureListenersRef.current.clear()
     dispatch({ type: 'reset-room' })
   }, [client, disconnect, dispatch, sendLifecycle])
 
@@ -625,11 +716,35 @@ export function RoomProvider({
     [],
   )
 
+  const sendCaptureEvent = useCallback(
+    async (event: CaptureEvent) => {
+      const current = roomRef.current
+      if (
+        !current ||
+        event.roomId !== current.room.id ||
+        event.senderUserId !== current.membership.user_id
+      ) {
+        return false
+      }
+      return sendChannelCaptureEvent(event)
+    },
+    [sendChannelCaptureEvent],
+  )
+
+  const subscribeCaptureEvents = useCallback(
+    (listener: (event: CaptureEvent) => void) => {
+      captureListenersRef.current.add(listener)
+      return () => captureListenersRef.current.delete(listener)
+    },
+    [],
+  )
+
   useEffect(
     () => () => {
       if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
       if (lifecycleTimerRef.current) clearTimeout(lifecycleTimerRef.current)
       signalListenersRef.current.clear()
+      captureListenersRef.current.clear()
     },
     [],
   )
@@ -643,6 +758,8 @@ export function RoomProvider({
       connection,
       operationStatus,
       settingsStatus,
+      canControlBooth:
+        !onlineRoom || onlineRoom.membership.role === 'host',
       createRoom,
       joinRoom,
       leaveRoom,
@@ -652,6 +769,8 @@ export function RoomProvider({
       setPresence,
       sendWebRtcSignal,
       subscribeWebRtcSignals,
+      sendCaptureEvent,
+      subscribeCaptureEvents,
     }),
     [
       authorizedPresence,
@@ -667,8 +786,10 @@ export function RoomProvider({
       retrySettings,
       setPresence,
       sendWebRtcSignal,
+      sendCaptureEvent,
       settingsStatus,
       subscribeWebRtcSignals,
+      subscribeCaptureEvents,
       updateSharedSettings,
     ],
   )

@@ -19,6 +19,7 @@ export type RoomErrorKind =
   | 'closed'
   | 'full'
   | 'membership'
+  | 'host-only'
   | 'revision-conflict'
   | 'invalid-settings'
   | 'unavailable'
@@ -49,6 +50,10 @@ const roomErrorMessages: Record<string, { kind: RoomErrorKind; message: string }
   membership_required: {
     kind: 'membership',
     message: 'You are no longer an active room member.',
+  },
+  host_required: {
+    kind: 'host-only',
+    message: 'Only the room host can control the photobooth.',
   },
   settings_revision_conflict: {
     kind: 'revision-conflict',

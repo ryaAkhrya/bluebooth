@@ -1,6 +1,7 @@
 'use client'
 
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
+import { useRoom } from '@/components/bluebooth/state/room-state'
 import { CAMERA_FILTERS } from '@/lib/bluebooth/presets/filters'
 import type { CameraStatus } from '@/types/bluebooth'
 
@@ -15,9 +16,12 @@ export function CameraControls({
   deviceId: string
   onRequest: (deviceId?: string) => Promise<void>
 }) {
-  const { state, dispatch } = useBluebooth()
+  const { state } = useBluebooth()
+  const room = useRoom()
   const patch = (key: keyof typeof state.cameraSettings, value: string | number | boolean) =>
-    dispatch({ type: 'patch-camera', patch: { [key]: value } })
+    room.updateSharedSettings({
+      cameraSettings: { ...state.cameraSettings, [key]: value },
+    })
   return (
     <>
       <div className="bb-control-card">
@@ -34,9 +38,9 @@ export function CameraControls({
             </select>
           </label>
         )}
-        <label className="bb-switch-row"><span>Mirror camera</span><input type="checkbox" checked={state.cameraSettings.mirror} onChange={(event) => patch('mirror', event.target.checked)} /></label>
+        <label className="bb-switch-row"><span>Mirror camera</span><input type="checkbox" disabled={!room.canControlBooth} checked={state.cameraSettings.mirror} onChange={(event) => patch('mirror', event.target.checked)} /></label>
         <label className="bb-field">Fit
-          <select value={state.cameraSettings.fit} onChange={(event) => patch('fit', event.target.value)}>
+          <select disabled={!room.canControlBooth} value={state.cameraSettings.fit} onChange={(event) => patch('fit', event.target.value)}>
             <option value="cover">Cover</option>
             <option value="contain">Contain</option>
             <option value="fill">Stretch</option>
@@ -45,24 +49,24 @@ export function CameraControls({
       </div>
       <div className="bb-filter-list">
         {CAMERA_FILTERS.map((filter) => (
-          <button key={filter.id} className={state.cameraSettings.filter === filter.id ? 'is-selected' : ''} aria-pressed={state.cameraSettings.filter === filter.id} onClick={() => patch('filter', filter.id)}>
+          <button disabled={!room.canControlBooth} key={filter.id} className={state.cameraSettings.filter === filter.id ? 'is-selected' : ''} aria-pressed={state.cameraSettings.filter === filter.id} onClick={() => patch('filter', filter.id)}>
             <span style={{ filter: filter.css }} />
             {filter.name}
           </button>
         ))}
       </div>
       <div className="bb-control-card">
-        <Range label="Brightness" value={state.cameraSettings.brightness * 100} min={50} max={150} onChange={(value) => patch('brightness', value / 100)} suffix="%" />
-        <Range label="Contrast" value={state.cameraSettings.contrast * 100} min={50} max={150} onChange={(value) => patch('contrast', value / 100)} suffix="%" />
-        <Range label="Saturation" value={state.cameraSettings.saturation * 100} min={0} max={200} onChange={(value) => patch('saturation', value / 100)} suffix="%" />
-        <Range label="Warmth" value={state.cameraSettings.warmth} min={-50} max={50} onChange={(value) => patch('warmth', value)} />
-        <Range label="Zoom" value={state.cameraSettings.zoom * 100} min={100} max={180} onChange={(value) => patch('zoom', value / 100)} suffix="%" />
-        <button className="bb-text-button" onClick={() => dispatch({ type: 'patch-camera', patch: { brightness: 1, contrast: 1, saturation: 1, warmth: 0, zoom: 1 } })}>Reset adjustments</button>
+        <Range disabled={!room.canControlBooth} label="Brightness" value={state.cameraSettings.brightness * 100} min={50} max={150} onChange={(value) => patch('brightness', value / 100)} suffix="%" />
+        <Range disabled={!room.canControlBooth} label="Contrast" value={state.cameraSettings.contrast * 100} min={50} max={150} onChange={(value) => patch('contrast', value / 100)} suffix="%" />
+        <Range disabled={!room.canControlBooth} label="Saturation" value={state.cameraSettings.saturation * 100} min={0} max={200} onChange={(value) => patch('saturation', value / 100)} suffix="%" />
+        <Range disabled={!room.canControlBooth} label="Warmth" value={state.cameraSettings.warmth} min={-50} max={50} onChange={(value) => patch('warmth', value)} />
+        <Range disabled={!room.canControlBooth} label="Zoom" value={state.cameraSettings.zoom * 100} min={100} max={180} onChange={(value) => patch('zoom', value / 100)} suffix="%" />
+        <button disabled={!room.canControlBooth} className="bb-text-button" onClick={() => room.updateSharedSettings({ cameraSettings: { ...state.cameraSettings, brightness: 1, contrast: 1, saturation: 1, warmth: 0, zoom: 1 } })}>Reset adjustments</button>
       </div>
     </>
   )
 }
 
-function Range({ label, value, min, max, suffix = '', onChange }: { label: string; value: number; min: number; max: number; suffix?: string; onChange: (value: number) => void }) {
-  return <label className="bb-range"><span>{label}<output>{Math.round(value)}{suffix}</output></span><input type="range" value={value} min={min} max={max} onChange={(event) => onChange(Number(event.target.value))} /></label>
+function Range({ label, value, min, max, suffix = '', disabled = false, onChange }: { label: string; value: number; min: number; max: number; suffix?: string; disabled?: boolean; onChange: (value: number) => void }) {
+  return <label className="bb-range"><span>{label}<output>{Math.round(value)}{suffix}</output></span><input disabled={disabled} type="range" value={value} min={min} max={max} onChange={(event) => onChange(Number(event.target.value))} /></label>
 }

@@ -11,26 +11,22 @@ export interface CreateResultInput {
   width: number
   height: number
   metadata?: Json
+  expectedRevision: number
 }
 
 export async function createResult(
   client: SupabaseClient<Database>,
   input: CreateResultInput,
 ): Promise<ResultRow> {
-  const userId = await requireAuthenticatedUserId(client)
-  const { data, error } = await client
-    .from('results')
-    .insert({
-      session_id: input.sessionId,
-      room_id: input.roomId,
-      created_by: userId,
-      storage_path: input.storagePath,
-      width: input.width,
-      height: input.height,
-      metadata: input.metadata ?? {},
-    })
-    .select()
-    .single()
+  await requireAuthenticatedUserId(client)
+  const { data, error } = await client.rpc('finalize_capture_result', {
+    p_session_id: input.sessionId,
+    p_expected_revision: input.expectedRevision,
+    p_storage_path: input.storagePath,
+    p_width: input.width,
+    p_height: input.height,
+    p_metadata: input.metadata ?? {},
+  })
   if (error) throwPostgrestError(error)
   return data
 }

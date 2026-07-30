@@ -1,6 +1,6 @@
 'use client'
 
-import { Pause, Play, X } from 'lucide-react'
+import { Pause, Play, RefreshCw, X } from 'lucide-react'
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
 import { useLocalMedia } from '@/components/bluebooth/state/local-media'
@@ -12,8 +12,199 @@ import {
   initialLocalSessionState,
   localSessionReducer,
 } from '@/lib/bluebooth/session-machine'
+import type { SynchronizedCaptureController } from '@/hooks/use-synchronized-capture'
+import { useRoom } from '@/components/bluebooth/state/room-state'
 
-export function SessionScreen({ stream }: { stream: MediaStream | null }) {
+export function SessionScreen({
+  stream,
+  synchronizedCapture,
+}: {
+  stream: MediaStream | null
+  synchronizedCapture: SynchronizedCaptureController
+}) {
+  return synchronizedCapture.enabled ? (
+    <SynchronizedSessionScreen
+      stream={stream}
+      synchronizedCapture={synchronizedCapture}
+    />
+  ) : (
+    <LocalSessionScreen stream={stream} />
+  )
+}
+
+function SynchronizedSessionScreen({
+  stream,
+  synchronizedCapture,
+}: {
+  stream: MediaStream | null
+  synchronizedCapture: SynchronizedCaptureController
+}) {
+  const { state } = useBluebooth()
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const room = useRoom()
+  const session = synchronizedCapture.snapshot?.session ?? null
+  const captureAt = session?.capture_at ?? null
+  const cameraSettings =
+    synchronizedCapture.configuration?.cameraSettings ?? state.cameraSettings
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    video.srcObject = stream
+    return () => {
+      video.srcObject = null
+    }
+  }, [stream])
+
+  useEffect(() => {
+    if (
+      !session ||
+      !captureAt ||
+      synchronizedCapture.countdown !== 0 ||
+      !['countdown', 'retake-countdown'].includes(session.status)
+    ) {
+      return
+    }
+    void synchronizedCapture.captureLocalFrame(videoRef.current)
+  }, [
+    captureAt,
+    session,
+    synchronizedCapture,
+    synchronizedCapture.countdown,
+  ])
+
+  const total = session?.shot_count ?? 0
+  const shotIndex = session?.current_shot_index ?? 0
+  const waitingForReady = session?.status === 'waiting-for-ready'
+  const currentRole = room.onlineRoom?.membership.role ?? 'host'
+  const readinessLabel = room.onlineRoom?.members
+    .filter((member) => member.left_at === null)
+    .map(
+      (member) =>
+        `${member.display_name}: ${
+          synchronizedCapture.readiness[member.user_id] ? 'ready' : 'not ready'
+        }`,
+    )
+    .join(' · ')
+
+  return (
+    <main className="bb-session bb-screen">
+      <div className="bb-session-stage">
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{
+            filter: cameraFilterCss(cameraSettings),
+            transform: cameraTransform(cameraSettings),
+            objectFit: cameraSettings.fit,
+          }}
+        />
+        {!stream && (
+          <div className="bb-session-fallback">
+            Your local camera is unavailable
+          </div>
+        )}
+        <div className="bb-countdown" aria-live="assertive">
+          <strong>
+            {waitingForReady
+              ? synchronizedCapture.bothReady
+                ? 'Ready'
+                : 'Waiting'
+              : synchronizedCapture.countdown && synchronizedCapture.countdown > 0
+                ? synchronizedCapture.countdown
+                : synchronizedCapture.state.operation === 'uploading'
+                  ? 'Uploading'
+                  : synchronizedCapture.state.operation === 'waiting'
+                    ? 'Captured'
+                    : ''}
+          </strong>
+          <span>
+            Photo {shotIndex + 1} of {total}
+          </span>
+        </div>
+      </div>
+
+      <div className="bb-capture-readiness" role="status">
+        <strong>
+          {synchronizedCapture.canStartCapture
+            ? 'Both cameras are ready'
+            : synchronizedCapture.bothReady
+              ? 'Waiting for participant connection'
+            : 'Waiting for both cameras'}
+        </strong>
+        <span>{readinessLabel || 'Checking participant readiness…'}</span>
+        {synchronizedCapture.state.error && (
+          <span className="is-error">{synchronizedCapture.state.error}</span>
+        )}
+      </div>
+
+      <div className="bb-session-thumbs">
+        {Array.from({ length: total }, (_, index) => {
+          const sources = synchronizedCapture.sharedCaptureUrls[index]
+          const thumbnail =
+            sources?.[currentRole] ?? sources?.host ?? sources?.partner
+          return (
+            <div key={index} className={index === shotIndex ? 'is-current' : ''}>
+              {thumbnail ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={thumbnail} alt={`Photo ${index + 1}`} />
+              ) : (
+                <span>{index + 1}</span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="bb-session-actions">
+        {waitingForReady && synchronizedCapture.isHost && (
+          <button
+            className="bb-primary-button"
+            disabled={!synchronizedCapture.canStartCapture}
+            onClick={() => void synchronizedCapture.startCountdown()}
+          >
+            {synchronizedCapture.canStartCapture
+              ? 'Start synchronized capture'
+              : synchronizedCapture.bothReady
+                ? 'Partner reconnecting'
+                : 'Partner not ready'}
+          </button>
+        )}
+        {waitingForReady && (
+          <button
+            className="bb-secondary-button"
+            onClick={synchronizedCapture.acknowledgeReady}
+          >
+            <RefreshCw /> Retry readiness
+          </button>
+        )}
+        {synchronizedCapture.state.operation === 'error' &&
+          !waitingForReady && (
+            <button
+              className="bb-secondary-button"
+              onClick={() =>
+                void synchronizedCapture.captureLocalFrame(videoRef.current)
+              }
+            >
+              <RefreshCw /> Retry capture
+            </button>
+          )}
+        {synchronizedCapture.isHost && (
+          <button
+            className="bb-text-button"
+            onClick={() => void synchronizedCapture.cancel()}
+          >
+            <X /> Cancel session
+          </button>
+        )}
+      </div>
+    </main>
+  )
+}
+
+function LocalSessionScreen({ stream }: { stream: MediaStream | null }) {
   const { state, dispatch } = useBluebooth()
   const { captures, setCapture } = useLocalMedia()
   const toast = useToast()
