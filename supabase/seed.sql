@@ -1,0 +1,2 @@
+-- Bluebooth does not seed application rows.
+-- Use anonymous Auth clients in the database tests so RLS is exercised.

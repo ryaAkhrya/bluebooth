@@ -3,6 +3,10 @@
 import { AppHeader } from '@/components/bluebooth/app-header'
 import { BlueboothProvider, useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
 import { LocalMediaProvider, useLocalMedia } from '@/components/bluebooth/state/local-media'
+import {
+  SupabaseAuthNotice,
+  SupabaseAuthProvider,
+} from '@/components/bluebooth/state/supabase-auth'
 import { ToastProvider, useToast } from '@/components/bluebooth/ui/toast-provider'
 import { CreateRoomScreen } from '@/components/bluebooth/screens/create-room-screen'
 import { FinalScreen } from '@/components/bluebooth/screens/final-screen'
@@ -17,13 +21,15 @@ import './bluebooth.css'
 
 export function BlueboothApp({ initialJoinCode }: { initialJoinCode?: string }) {
   return (
-    <BlueboothProvider initialJoinCode={initialJoinCode}>
-      <LocalMediaProvider>
-        <ToastProvider>
-          <BlueboothAppContent />
-        </ToastProvider>
-      </LocalMediaProvider>
-    </BlueboothProvider>
+    <SupabaseAuthProvider>
+      <BlueboothProvider initialJoinCode={initialJoinCode}>
+        <LocalMediaProvider>
+          <ToastProvider>
+            <BlueboothAppContent />
+          </ToastProvider>
+        </LocalMediaProvider>
+      </BlueboothProvider>
+    </SupabaseAuthProvider>
   )
 }
 
@@ -48,6 +54,7 @@ function BlueboothAppContent() {
           dispatch({ type: 'navigate', screen: 'setup' })
         }}
       />
+      <SupabaseAuthNotice />
       {state.screen === 'home' && <HomeScreen />}
       {state.screen === 'create' && <CreateRoomScreen onStartCamera={() => camera.request()} />}
       {state.screen === 'join' && <JoinRoomScreen onStartCamera={() => camera.request()} />}
