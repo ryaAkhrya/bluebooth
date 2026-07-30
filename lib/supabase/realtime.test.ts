@@ -121,4 +121,29 @@ describe('room realtime payloads', () => {
       expect.objectContaining({ userId: envelope.senderUserId, stage: 'setup' }),
     ])
   })
+
+  it('keeps participant presence valid through capture and review', () => {
+    for (const stage of ['session', 'review'] as const) {
+      expect(
+        flattenRoomPresence({
+          participant: [
+            {
+              userId: envelope.senderUserId,
+              displayName: 'Partner',
+              role: 'partner',
+              stage,
+              cameraReady: true,
+              joinedAt: envelope.sentAt,
+            },
+          ],
+        }),
+      ).toEqual([
+        expect.objectContaining({
+          userId: envelope.senderUserId,
+          stage,
+          cameraReady: true,
+        }),
+      ])
+    }
+  })
 })

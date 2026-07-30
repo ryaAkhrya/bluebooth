@@ -28,7 +28,10 @@ export function isRoomPresence(value: unknown): value is RoomPresence {
     value.displayName.length > 0 &&
     value.displayName.length <= 32 &&
     (value.role === 'host' || value.role === 'partner') &&
-    (value.stage === 'waiting' || value.stage === 'setup') &&
+    (value.stage === 'waiting' ||
+      value.stage === 'setup' ||
+      value.stage === 'session' ||
+      value.stage === 'review') &&
     typeof value.cameraReady === 'boolean' &&
     isIsoDate(value.joinedAt)
   )
