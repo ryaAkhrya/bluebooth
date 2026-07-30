@@ -1,8 +1,10 @@
 'use client'
 
 import { ArrowRight, Check, Copy, UserRound } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { CameraVideo } from '@/components/bluebooth/camera/camera-video'
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
+import { useRoom } from '@/components/bluebooth/state/room-state'
 import { useToast } from '@/components/bluebooth/ui/toast-provider'
 import type { CameraStatus } from '@/types/bluebooth'
 
@@ -16,8 +18,36 @@ export function WaitingRoomScreen({
   onStartCamera: () => Promise<void>
 }) {
   const { state, dispatch } = useBluebooth()
+  const room = useRoom()
+  const setPresence = room.setPresence
   const toast = useToast()
-  const partner = state.participants.find((participant) => !participant.isSelf)
+  const [entering, setEntering] = useState(false)
+  const localPartner = state.participants.find((participant) => !participant.isSelf)
+  const onlinePartner = room.onlineRoom?.members.find(
+    (member) => member.user_id !== room.onlineRoom?.membership.user_id,
+  )
+  const partner = room.mode === 'online' ? onlinePartner : localPartner
+  const partnerOnline =
+    room.mode === 'online'
+      ? Boolean(
+          onlinePartner &&
+            room.presence.some((entry) => entry.userId === onlinePartner.user_id),
+        )
+      : Boolean(localPartner)
+  const selfName =
+    room.mode === 'online'
+      ? room.onlineRoom?.membership.display_name ?? state.userName
+      : state.userName
+  const partnerName =
+    room.mode === 'online' ? onlinePartner?.display_name : localPartner?.name
+
+  useEffect(() => {
+    setPresence({
+      stage: 'waiting',
+      cameraReady: cameraStatus === 'ready',
+    })
+  }, [cameraStatus, setPresence])
+
   const simulate = () => {
     dispatch({
       type: 'set-participants',
@@ -27,6 +57,17 @@ export function WaitingRoomScreen({
       ],
     })
     toast('Partner joined.', 'success')
+  }
+  const enterSetup = async () => {
+    setEntering(true)
+    try {
+      await room.enterSetup()
+      dispatch({ type: 'navigate', screen: 'setup' })
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Setup could not be opened.', 'error')
+    } finally {
+      setEntering(false)
+    }
   }
   return (
     <main className="bb-waiting bb-screen">
@@ -43,22 +84,30 @@ export function WaitingRoomScreen({
           <div className="bb-participant-camera">
             {stream ? <CameraVideo stream={stream} /> : <div className="bb-camera-placeholder"><UserRound /><span>Camera preview</span></div>}
           </div>
-          <div><strong>{state.userName} <small>You</small></strong><span className={cameraStatus === 'ready' ? 'is-online' : ''}>{cameraStatus === 'ready' ? 'Camera ready' : 'Camera off'}</span></div>
+          <div><strong>{selfName} <small>You</small></strong><span className={cameraStatus === 'ready' ? 'is-online' : ''}>{cameraStatus === 'ready' ? 'Camera ready' : 'Camera off'}</span></div>
           {cameraStatus !== 'ready' && <button className="bb-secondary-button" onClick={() => void onStartCamera()}>Start camera</button>}
         </article>
         <article className="bb-participant-card">
           <div className="bb-participant-camera">
-            {partner ? <div className="bb-demo-feed"><span>Partner preview</span></div> : <div className="bb-camera-placeholder"><UserRound /><span>Waiting for partner</span></div>}
+            {partnerOnline ? <div className="bb-demo-feed"><span>Partner online</span></div> : <div className="bb-camera-placeholder"><UserRound /><span>Waiting for partner</span></div>}
           </div>
-          <div><strong>{partner?.name ?? 'Partner'}</strong><span className={partner ? 'is-online' : ''}>{partner ? 'Connected' : 'Not joined'}</span></div>
+          <div><strong>{partnerName ?? 'Partner'}</strong><span className={partnerOnline ? 'is-online' : ''}>{partnerOnline ? 'Connected' : partner ? 'Offline' : 'Not joined'}</span></div>
         </article>
       </div>
-      {!partner ? (
+      {room.mode === 'local' && !partner ? (
         <button className="bb-secondary-button" onClick={simulate}>Simulate partner joining</button>
-      ) : (
+      ) : partnerOnline ? (
         <div className="bb-ready-note"><Check /> Both participants are here</div>
+      ) : (
+        <div className="bb-ready-note">
+          {room.mode === 'online' && room.connection === 'reconnecting'
+            ? 'Reconnecting to room…'
+            : 'Waiting for your partner'}
+        </div>
       )}
-      <button className="bb-primary-button" disabled={!partner} onClick={() => dispatch({ type: 'navigate', screen: 'setup' })}>Set up booth <ArrowRight /></button>
+      <button className="bb-primary-button" disabled={!partnerOnline || entering} onClick={() => void enterSetup()}>
+        {entering ? 'Opening setup…' : 'Set up booth'} <ArrowRight />
+      </button>
     </main>
   )
 }

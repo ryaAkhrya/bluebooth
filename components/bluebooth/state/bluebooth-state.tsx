@@ -1,6 +1,11 @@
 'use client'
 
 import { createContext, useContext, useMemo, useReducer, type Dispatch, type ReactNode } from 'react'
+import {
+  applySharedSetupPatch,
+  type SharedSetupPatch,
+  type SharedSetupSettings,
+} from '@/lib/bluebooth/shared-settings'
 import type {
   AppScreen,
   BlueboothState,
@@ -18,6 +23,8 @@ type Action =
   | { type: 'set-setup-step'; step: SetupStep }
   | { type: 'set-room'; code: string; roomName: string; userName: string; participants: Participant[] }
   | { type: 'set-participants'; participants: Participant[] }
+  | { type: 'apply-shared-setup'; settings: SharedSetupSettings }
+  | { type: 'apply-shared-setup-patch'; patch: SharedSetupPatch }
   | { type: 'select-grid'; id: string }
   | { type: 'select-frame'; id: string }
   | { type: 'set-custom-frame'; frame: CustomFrame | null }
@@ -88,6 +95,32 @@ function reducer(state: BlueboothState, action: Action): BlueboothState {
       }
     case 'set-participants':
       return { ...state, participants: action.participants }
+    case 'apply-shared-setup':
+      return {
+        ...state,
+        selectedGrid: action.settings.selectedGrid,
+        selectedFrame: action.settings.selectedFrame,
+        timer: action.settings.timer,
+        layout: { ...action.settings.layout },
+      }
+    case 'apply-shared-setup-patch': {
+      const shared = applySharedSetupPatch(
+        {
+          selectedGrid: state.selectedGrid,
+          selectedFrame: state.selectedFrame,
+          timer: state.timer,
+          layout: state.layout,
+        },
+        action.patch,
+      )
+      return {
+        ...state,
+        selectedGrid: shared.selectedGrid,
+        selectedFrame: shared.selectedFrame,
+        timer: shared.timer,
+        layout: shared.layout,
+      }
+    }
     case 'select-grid':
       return { ...state, selectedGrid: action.id }
     case 'select-frame':

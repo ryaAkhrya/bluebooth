@@ -3,6 +3,7 @@
 import { AppHeader } from '@/components/bluebooth/app-header'
 import { BlueboothProvider, useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
 import { LocalMediaProvider, useLocalMedia } from '@/components/bluebooth/state/local-media'
+import { RoomProvider, useRoom } from '@/components/bluebooth/state/room-state'
 import {
   SupabaseAuthNotice,
   SupabaseAuthProvider,
@@ -23,11 +24,13 @@ export function BlueboothApp({ initialJoinCode }: { initialJoinCode?: string }) 
   return (
     <SupabaseAuthProvider>
       <BlueboothProvider initialJoinCode={initialJoinCode}>
-        <LocalMediaProvider>
-          <ToastProvider>
-            <BlueboothAppContent />
-          </ToastProvider>
-        </LocalMediaProvider>
+        <RoomProvider initialJoinCode={initialJoinCode}>
+          <LocalMediaProvider>
+            <ToastProvider>
+              <BlueboothAppContent />
+            </ToastProvider>
+          </LocalMediaProvider>
+        </RoomProvider>
       </BlueboothProvider>
     </SupabaseAuthProvider>
   )
@@ -37,18 +40,20 @@ function BlueboothAppContent() {
   const { state, dispatch } = useBluebooth()
   const camera = useCamera()
   const media = useLocalMedia()
+  const room = useRoom()
   const toast = useToast()
-  const leave = () => {
+  const leave = async () => {
     camera.stop()
     media.clearAll()
-    dispatch({ type: 'reset-room' })
+    await room.leaveRoom()
+    window.history.replaceState(null, '', '/')
     toast('You left the room.')
   }
 
   return (
     <div className="bluebooth-root">
       <AppHeader
-        onLeave={leave}
+        onLeave={() => void leave()}
         onCamera={() => {
           dispatch({ type: 'set-setup-step', step: 'camera' })
           dispatch({ type: 'navigate', screen: 'setup' })

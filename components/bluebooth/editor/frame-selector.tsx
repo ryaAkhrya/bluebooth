@@ -4,6 +4,7 @@ import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
 import { FRAME_PRESETS } from '@/lib/bluebooth/presets/frames'
 import { useToast } from '@/components/bluebooth/ui/toast-provider'
 import { useLocalMedia } from '@/components/bluebooth/state/local-media'
+import { useRoom } from '@/components/bluebooth/state/room-state'
 import {
   validateCustomFrameDimensions,
   validateCustomFrameFile,
@@ -12,6 +13,7 @@ import {
 export function FrameSelector() {
   const { state, dispatch } = useBluebooth()
   const media = useLocalMedia()
+  const room = useRoom()
   const toast = useToast()
   const chooseFile = async (file?: File) => {
     if (!file) return
@@ -65,7 +67,7 @@ export function FrameSelector() {
             key={frame.id}
             className={`bb-frame-card ${state.selectedFrame === frame.id ? 'is-selected' : ''}`}
             aria-pressed={state.selectedFrame === frame.id}
-            onClick={() => dispatch({ type: 'select-frame', id: frame.id })}
+            onClick={() => room.updateSharedSettings({ selectedFrame: frame.id })}
           >
             <span style={{ background: frame.background, borderColor: frame.borderColor, borderWidth: Math.min(frame.border, 4) }}>
               <i />

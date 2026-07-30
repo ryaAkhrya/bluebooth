@@ -1,7 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { SupabaseServiceError, throwPostgrestError } from '@/lib/supabase/errors'
+import {
+  SupabaseServiceError,
+  roomServiceError,
+  throwPostgrestError,
+} from '@/lib/supabase/errors'
 import type { Database, Json } from '@/types/database'
-import type { RoomAccess, RoomMemberRow, RoomState } from '@/types/supabase'
+import type {
+  RoomAccess,
+  RoomMemberRow,
+  RoomSettingsState,
+  RoomState,
+} from '@/types/supabase'
 
 type RoomAccessRecord = Database['public']['CompositeTypes']['room_access']
 
@@ -36,7 +45,7 @@ export async function createRoom(
     p_display_name: input.displayName,
     p_room_name: input.roomName,
   })
-  if (error) throwPostgrestError(error)
+  if (error) throw roomServiceError(error)
   return mapRoomAccess(data?.[0])
 }
 
@@ -48,7 +57,7 @@ export async function joinRoom(
     p_room_code: input.code,
     p_display_name: input.displayName,
   })
-  if (error) throwPostgrestError(error)
+  if (error) throw roomServiceError(error)
   return mapRoomAccess(data?.[0])
 }
 
@@ -57,21 +66,43 @@ export async function leaveRoom(
   roomId: string,
 ): Promise<boolean> {
   const { data, error } = await client.rpc('leave_room', { p_room_id: roomId })
-  if (error) throwPostgrestError(error)
+  if (error) throw roomServiceError(error)
   return data
 }
 
 export async function updateRoomSettings(
   client: SupabaseClient<Database>,
   input: { roomId: string; expectedRevision: number; patch: Json },
-): Promise<RoomAccess> {
+): Promise<RoomSettingsState> {
   const { data, error } = await client.rpc('update_room_settings', {
     p_room_id: input.roomId,
     p_expected_revision: input.expectedRevision,
     p_settings_patch: input.patch,
   })
-  if (error) throwPostgrestError(error)
-  return mapRoomAccess(data?.[0])
+  if (error) throw roomServiceError(error)
+  const record = data?.[0]
+  if (
+    !record?.room_id ||
+    record.shared_settings === null ||
+    record.settings_revision === null ||
+    !record.updated_at
+  ) {
+    throw new SupabaseServiceError('The settings operation returned an invalid payload')
+  }
+  return {
+    roomId: record.room_id,
+    sharedSettings: record.shared_settings,
+    settingsRevision: record.settings_revision,
+    updatedAt: record.updated_at,
+  }
+}
+
+export async function enterRoomSetup(
+  client: SupabaseClient<Database>,
+  roomId: string,
+): Promise<void> {
+  const { error } = await client.rpc('enter_room_setup', { p_room_id: roomId })
+  if (error) throw roomServiceError(error)
 }
 
 export async function fetchRoomState(
@@ -92,6 +123,25 @@ export async function fetchRoomState(
   return { room: roomResponse.data, members: membersResponse.data }
 }
 
+export async function fetchRoomStateByCode(
+  client: SupabaseClient<Database>,
+  code: string,
+  userId: string,
+): Promise<(RoomState & { membership: RoomMemberRow }) | null> {
+  const normalized = normalizeRoomCode(code)
+  if (!isValidRoomCode(normalized)) return null
+  const { data: room, error } = await client
+    .from('rooms')
+    .select('*')
+    .eq('code', normalized)
+    .maybeSingle()
+  if (error) throwPostgrestError(error)
+  if (!room) return null
+  const state = await fetchRoomState(client, room.id)
+  const membership = state.members.find((member) => member.user_id === userId)
+  return membership ? { ...state, membership } : null
+}
+
 export async function fetchCurrentMembership(
   client: SupabaseClient<Database>,
   roomId: string,
@@ -106,4 +156,12 @@ export async function fetchCurrentMembership(
     .single()
   if (error) throwPostgrestError(error)
   return data
+}
+
+export function normalizeRoomCode(code: string): string {
+  return code.trim().toUpperCase()
+}
+
+export function isValidRoomCode(code: string): boolean {
+  return /^[A-Z0-9]{6}$/.test(code)
 }

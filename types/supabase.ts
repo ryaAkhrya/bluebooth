@@ -22,6 +22,13 @@ export interface RoomState {
   members: RoomMemberRow[]
 }
 
+export interface RoomSettingsState {
+  roomId: string
+  sharedSettings: Json
+  settingsRevision: number
+  updatedAt: string
+}
+
 export interface CreateSessionInput {
   roomId: string
   configuration: Json

@@ -1,17 +1,19 @@
 'use client'
 
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
+import { useRoom } from '@/components/bluebooth/state/room-state'
 import { GAP_STEPS, PADDING_STEPS, RADIUS_STEPS } from '@/lib/bluebooth/constants'
 
 export function LayoutControls() {
-  const { state, dispatch } = useBluebooth()
+  const { state } = useBluebooth()
+  const room = useRoom()
   return (
     <>
-      <StepRange label="Gap" steps={GAP_STEPS} value={state.layout.gap} onChange={(gap) => dispatch({ type: 'patch-layout', patch: { gap } })} />
-      <StepRange label="Outer padding" steps={PADDING_STEPS} value={state.layout.padding} onChange={(padding) => dispatch({ type: 'patch-layout', patch: { padding } })} />
-      <StepRange label="Corner radius" steps={RADIUS_STEPS} value={state.layout.radius} onChange={(radius) => dispatch({ type: 'patch-layout', patch: { radius } })} />
+      <StepRange label="Gap" steps={GAP_STEPS} value={state.layout.gap} onChange={(gap) => room.updateSharedSettings({ layout: { ...state.layout, gap } })} />
+      <StepRange label="Outer padding" steps={PADDING_STEPS} value={state.layout.padding} onChange={(padding) => room.updateSharedSettings({ layout: { ...state.layout, padding } })} />
+      <StepRange label="Corner radius" steps={RADIUS_STEPS} value={state.layout.radius} onChange={(radius) => room.updateSharedSettings({ layout: { ...state.layout, radius } })} />
       <label className="bb-field">Canvas background
-        <input type="color" value={state.layout.background} onChange={(event) => dispatch({ type: 'patch-layout', patch: { background: event.target.value } })} />
+        <input type="color" value={state.layout.background} onChange={(event) => room.updateSharedSettings({ layout: { ...state.layout, background: event.target.value } })} />
       </label>
     </>
   )

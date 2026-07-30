@@ -6,5 +6,5 @@ export default async function RoomPage({
   params: Promise<{ code: string }>
 }) {
   const { code } = await params
-  return <BlueboothApp initialJoinCode={code.slice(0, 6).toUpperCase()} />
+  return <BlueboothApp initialJoinCode={code.toUpperCase()} />
 }

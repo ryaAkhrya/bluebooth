@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
 import { useLocalMedia } from '@/components/bluebooth/state/local-media'
+import { useRoom } from '@/components/bluebooth/state/room-state'
 import { getCompositionGeometry, getSlotIds } from '@/lib/bluebooth/geometry'
 import { getFramePreset } from '@/lib/bluebooth/presets/frames'
 import { GRID_PRESETS } from '@/lib/bluebooth/presets/grids'
@@ -17,8 +18,9 @@ const categories: Array<{ id: GridCategory | 'all'; label: string }> = [
 ]
 
 export function GridSelector() {
-  const { state, dispatch } = useBluebooth()
+  const { state } = useBluebooth()
   const media = useLocalMedia()
+  const room = useRoom()
   const [category, setCategory] = useState<GridCategory | 'all'>('all')
   const presets = category === 'all'
     ? GRID_PRESETS
@@ -45,7 +47,7 @@ export function GridSelector() {
             onClick={() => {
               media.clearCaptures()
               media.clearFinalResult()
-              dispatch({ type: 'select-grid', id: preset.id })
+              room.updateSharedSettings({ selectedGrid: preset.id })
             }}
           >
             <GridThumbnail preset={preset} />

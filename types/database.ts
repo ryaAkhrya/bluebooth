@@ -198,7 +198,15 @@ export type Database = {
       }
       update_room_settings: {
         Args: { p_expected_revision: number; p_room_id: string; p_settings_patch: Json }
-        Returns: Database['public']['CompositeTypes']['room_access'][]
+        Returns: Database['public']['CompositeTypes']['room_settings_result'][]
+      }
+      enter_room_setup: {
+        Args: { p_room_id: string }
+        Returns: boolean
+      }
+      is_valid_room_settings_patch: {
+        Args: { p_patch: Json }
+        Returns: boolean
       }
     }
     Enums: Record<string, never>
@@ -211,6 +219,12 @@ export type Database = {
         status: 'waiting' | 'setup' | 'capturing' | 'review' | 'completed' | 'closed' | null
         settings_revision: number | null
         expires_at: string | null
+      }
+      room_settings_result: {
+        room_id: string | null
+        shared_settings: Json | null
+        settings_revision: number | null
+        updated_at: string | null
       }
     }
   }

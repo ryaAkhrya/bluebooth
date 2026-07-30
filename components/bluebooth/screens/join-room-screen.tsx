@@ -3,28 +3,44 @@
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { useState } from 'react'
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
+import { useRoom } from '@/components/bluebooth/state/room-state'
 import { useToast } from '@/components/bluebooth/ui/toast-provider'
+import { RoomServiceError } from '@/lib/supabase/errors'
+import { isValidRoomCode, normalizeRoomCode } from '@/lib/supabase/rooms'
 
 export function JoinRoomScreen({ onStartCamera }: { onStartCamera: () => Promise<void> }) {
   const { state, dispatch } = useBluebooth()
+  const room = useRoom()
   const toast = useToast()
   const [code, setCode] = useState(state.roomCode)
   const [name, setName] = useState('')
-  const join = () => {
-    const normalized = code.trim().toUpperCase()
-    if (!/^[A-Z0-9]{6}$/.test(normalized)) return toast('Enter a valid 6-character room code.', 'error')
-    dispatch({
-      type: 'set-room',
-      code: normalized,
-      roomName: 'Bluebooth',
-      userName: name.trim() || 'You',
-      participants: [
-        { id: 'partner', name: 'Partner', connected: true, isSelf: false },
-        { id: 'self', name: name.trim() || 'You', connected: true, isSelf: true },
-      ],
-    })
-    dispatch({ type: 'navigate', screen: 'waiting' })
-    void onStartCamera()
+  const [submitting, setSubmitting] = useState(false)
+  const [onlineFailed, setOnlineFailed] = useState(false)
+  const join = async (forceLocal = false) => {
+    const normalized = normalizeRoomCode(code)
+    if (!isValidRoomCode(normalized)) {
+      return toast('Enter a valid 6-character room code.', 'error')
+    }
+    setSubmitting(true)
+    setOnlineFailed(false)
+    try {
+      const result = await room.joinRoom(
+        { code: normalized, displayName: name },
+        forceLocal,
+      )
+      window.history.replaceState(null, '', `/r/${result.code}`)
+      dispatch({ type: 'navigate', screen: 'waiting' })
+      void onStartCamera()
+    } catch (error) {
+      setOnlineFailed(
+        room.onlineAvailable &&
+          error instanceof RoomServiceError &&
+          (error.kind === 'unavailable' || error.kind === 'authentication'),
+      )
+      toast(error instanceof Error ? error.message : 'The room could not be joined.', 'error')
+    } finally {
+      setSubmitting(false)
+    }
   }
   return (
     <main className="bb-form-screen bb-screen">
@@ -35,7 +51,14 @@ export function JoinRoomScreen({ onStartCamera }: { onStartCamera: () => Promise
         <p>Ask your partner for the six-character code.</p>
         <label className="bb-field">Room code<input className="bb-code-input" value={code} maxLength={6} autoComplete="off" placeholder="BLU482" onChange={(event) => setCode(event.target.value.toUpperCase())} /></label>
         <label className="bb-field">Your name<input value={name} maxLength={20} placeholder="You" onChange={(event) => setName(event.target.value)} /></label>
-        <button className="bb-primary-button bb-full-button" onClick={join}>Join room <ArrowRight /></button>
+        <button className="bb-primary-button bb-full-button" disabled={submitting} onClick={() => void join()}>
+          {submitting ? 'Joining room…' : 'Join room'} <ArrowRight />
+        </button>
+        {onlineFailed && (
+          <button className="bb-secondary-button bb-full-button" disabled={submitting} onClick={() => void join(true)}>
+            Continue with local room
+          </button>
+        )}
       </section>
     </main>
   )

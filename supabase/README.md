@@ -1,7 +1,8 @@
 # Bluebooth Supabase foundation
 
 Phase 03 adds schema, authentication, RLS, private Storage, and typed services.
-The current product remains local-first and does not call the room services yet.
+Phase 04 connects room creation, joining, Presence, and durable shared setup while
+preserving the local simulation when Supabase is unavailable.
 
 ## Prerequisites
 
@@ -55,10 +56,20 @@ The current product remains local-first and does not call the room services yet.
 5. Use the project's publishable key in the browser. Never add a secret/service-role
    key to a `NEXT_PUBLIC_` variable or commit it.
 
+## Phase 04 hosted checklist
+
+1. Enable anonymous sign-ins in Authentication settings.
+2. In Realtime settings, allow only private channels.
+3. Apply every migration in order with `npx supabase db push`.
+4. Configure the public URL and publishable key in `.env.local`.
+5. Test create/join with two separate browser profiles. A third profile must
+   receive the room-full error.
+
 ## Current boundaries
 
-- No existing screen reads or writes Supabase room data.
-- No Realtime channel is opened.
+- Missing or invalid Supabase configuration uses the local room simulation.
+- Online rooms use one private `room:<uuid>` Presence/Broadcast channel.
+- Realtime synchronizes only membership presence, setup patches, and room lifecycle.
 - No WebRTC behavior is included.
+- No images, camera data, captures, or results are sent through Realtime.
 - Raw-capture retention cleanup is not automated in this phase.
-- Missing configuration or authentication failure leaves local mode usable.

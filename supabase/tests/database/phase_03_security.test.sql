@@ -152,15 +152,13 @@ select throws_ok(
   'new row violates row-level security policy for table "objects"',
   'a member cannot upload into another user raw path'
 );
-select throws_ok(
+select lives_ok(
   $$ select * from public.update_room_settings(
        'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-       0,
+       1,
        '{"timer": 3}'::jsonb
      ) $$,
-  '42501',
-  'host_required',
-  'a partner cannot update host-authoritative settings'
+  'an active partner can update shared setup settings'
 );
 select lives_ok(
   $$ insert into storage.objects(bucket_id, name)

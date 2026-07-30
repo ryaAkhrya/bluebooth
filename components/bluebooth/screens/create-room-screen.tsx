@@ -3,34 +3,48 @@
 import { ArrowLeft, ArrowRight, Copy } from 'lucide-react'
 import { useState } from 'react'
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
+import { useRoom } from '@/components/bluebooth/state/room-state'
 import { useToast } from '@/components/bluebooth/ui/toast-provider'
-
-function randomCode() {
-  const digits = Math.floor(100 + Math.random() * 900)
-  return `BLU${digits}`
-}
+import { buildRoomShareUrl } from '@/lib/supabase/env'
+import { RoomServiceError } from '@/lib/supabase/errors'
 
 export function CreateRoomScreen({ onStartCamera }: { onStartCamera: () => Promise<void> }) {
   const { dispatch } = useBluebooth()
+  const room = useRoom()
   const toast = useToast()
   const [roomName, setRoomName] = useState('')
   const [userName, setUserName] = useState('')
   const [startCamera, setStartCamera] = useState(true)
   const [code, setCode] = useState('')
-  const create = () => {
+  const [submitting, setSubmitting] = useState(false)
+  const [onlineFailed, setOnlineFailed] = useState(false)
+  const create = async (forceLocal = false) => {
     if (!userName.trim()) return toast('Enter your name.', 'error')
-    const nextCode = randomCode()
-    dispatch({
-      type: 'set-room',
-      code: nextCode,
-      roomName: roomName.trim() || 'Bluebooth',
-      userName: userName.trim(),
-      participants: [{ id: 'self', name: userName.trim(), connected: true, isSelf: true }],
-    })
-    setCode(nextCode)
-    if (startCamera) void onStartCamera()
+    setSubmitting(true)
+    setOnlineFailed(false)
+    try {
+      const result = await room.createRoom(
+        { displayName: userName, roomName },
+        forceLocal,
+      )
+      setCode(result.code)
+      window.history.replaceState(null, '', `/r/${result.code}`)
+      if (startCamera) void onStartCamera()
+    } catch (error) {
+      setOnlineFailed(
+        room.onlineAvailable &&
+          error instanceof RoomServiceError &&
+          (error.kind === 'unavailable' || error.kind === 'authentication'),
+      )
+      toast(error instanceof Error ? error.message : 'The room could not be created.', 'error')
+    } finally {
+      setSubmitting(false)
+    }
   }
-  const shareUrl = typeof window === 'undefined' || !code ? '' : `${window.location.origin}/r/${code}`
+  const shareUrl =
+    typeof window === 'undefined' || !code
+      ? ''
+      : buildRoomShareUrl(code, window.location.origin)
   return (
     <main className="bb-form-screen bb-screen">
       <button className="bb-back-button" onClick={() => dispatch({ type: 'navigate', screen: 'home' })}><ArrowLeft /> Back</button>
@@ -43,7 +57,14 @@ export function CreateRoomScreen({ onStartCamera }: { onStartCamera: () => Promi
             <label className="bb-field">Room name<input value={roomName} maxLength={24} placeholder="Sunday shoot" onChange={(event) => setRoomName(event.target.value)} /></label>
             <label className="bb-field">Your name<input value={userName} maxLength={20} placeholder="You" onChange={(event) => setUserName(event.target.value)} /></label>
             <label className="bb-switch-row"><span>Turn on camera right away</span><input type="checkbox" checked={startCamera} onChange={(event) => setStartCamera(event.target.checked)} /></label>
-            <button className="bb-primary-button bb-full-button" onClick={create}>Create room <ArrowRight /></button>
+            <button className="bb-primary-button bb-full-button" disabled={submitting} onClick={() => void create()}>
+              {submitting ? 'Creating room…' : 'Create room'} <ArrowRight />
+            </button>
+            {onlineFailed && (
+              <button className="bb-secondary-button bb-full-button" disabled={submitting} onClick={() => void create(true)}>
+                Continue with local room
+              </button>
+            )}
           </>
         ) : (
           <>
