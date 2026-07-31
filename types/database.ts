@@ -322,6 +322,42 @@ export type Database = {
         }
         Returns: Database['public']['Tables']['results']['Row']
       }
+      is_result_room_member: {
+        Args: { p_room_id: string }
+        Returns: boolean
+      }
+      can_delete_result_object: {
+        Args: { p_name: string }
+        Returns: boolean
+      }
+      can_access_result_object: {
+        Args: { p_name: string }
+        Returns: boolean
+      }
+      list_result_history: {
+        Args: {
+          p_limit?: number
+          p_before_created_at?: string | null
+          p_before_id?: string | null
+        }
+        Returns: {
+          result_id: string
+          session_id: string
+          room_id: string
+          room_code: string
+          room_name: string
+          storage_path: string
+          width: number
+          height: number
+          metadata: Json
+          created_at: string
+          can_delete: boolean
+        }[]
+      }
+      soft_delete_result: {
+        Args: { p_result_id: string }
+        Returns: Database['public']['Tables']['results']['Row']
+      }
       storage_raw_shot_index: {
         Args: { p_name: string }
         Returns: number | null

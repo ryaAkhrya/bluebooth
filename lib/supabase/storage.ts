@@ -4,6 +4,22 @@ import type { Database } from '@/types/database'
 
 export const BLUEBOOTH_MEDIA_BUCKET = 'bluebooth-media'
 
+export interface PrivateSignedUrl {
+  url: string
+  expiresAt: number
+}
+
+export interface PrivateSignedUrlOptions {
+  expiresInSeconds?: number
+  download?: string | boolean
+  transform?: {
+    width?: number
+    height?: number
+    resize?: 'cover' | 'contain' | 'fill'
+    quality?: number
+  }
+}
+
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -66,10 +82,42 @@ export async function createPrivateSignedUrl(
   path: string,
   expiresInSeconds = 300,
 ): Promise<string> {
-  const safeExpiry = Math.min(3600, Math.max(60, Math.round(expiresInSeconds)))
+  const signed = await createPrivateSignedUrlDetails(client, path, {
+    expiresInSeconds,
+  })
+  return signed.url
+}
+
+export async function createPrivateSignedUrlDetails(
+  client: SupabaseClient<Database>,
+  path: string,
+  options: PrivateSignedUrlOptions = {},
+): Promise<PrivateSignedUrl> {
+  const safeExpiry = Math.min(
+    3600,
+    Math.max(60, Math.round(options.expiresInSeconds ?? 300)),
+  )
+  const createdAt = Date.now()
   const { data, error } = await client.storage
     .from(BLUEBOOTH_MEDIA_BUCKET)
-    .createSignedUrl(path, safeExpiry)
+    .createSignedUrl(path, safeExpiry, {
+      download: options.download,
+      transform: options.transform,
+    })
   if (error) throw new SupabaseServiceError(error.message, error.name)
-  return data.signedUrl
+  return {
+    url: data.signedUrl,
+    expiresAt: createdAt + safeExpiry * 1000,
+  }
+}
+
+export async function removePrivateObjects(
+  client: SupabaseClient<Database>,
+  paths: readonly string[],
+): Promise<void> {
+  if (paths.length === 0) return
+  const { error } = await client.storage
+    .from(BLUEBOOTH_MEDIA_BUCKET)
+    .remove([...paths])
+  if (error) throw new SupabaseServiceError(error.message, error.name)
 }

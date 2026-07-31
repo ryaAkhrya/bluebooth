@@ -5,7 +5,9 @@ Phase 04 connects room creation, joining, Presence, and durable shared setup whi
 preserving the local simulation when Supabase is unavailable.
 Phase 05 adds private-channel WebRTC signaling. Phase 06 adds host-authoritative,
 timestamp-synchronized capture sessions, private raw uploads, shared review, and
-private final results.
+private final results. Phase 07 adds private historical result access, signed
+history thumbnails/downloads, creator-authorized soft deletion, and documented
+media cleanup preparation.
 
 ## Prerequisites
 
@@ -99,4 +101,7 @@ private final results.
 - Each browser captures only its local camera. The remote WebRTC stream remains
   preview-only.
 - Raw captures and final results use signed access from the private media bucket.
-- Raw-capture retention cleanup is not automated in this phase.
+- Result history is tied to the current anonymous identity. Clearing that
+  identity makes its historical results inaccessible.
+- Phase 07 cleanup automation is intentionally not deployed or scheduled. See
+  `PHASE_07_CLEANUP.md` for the prepared lifecycle and retention plan.

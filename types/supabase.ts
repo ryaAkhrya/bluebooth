@@ -8,6 +8,8 @@ export type CaptureRow = Database['public']['Tables']['captures']['Row']
 export type ResultRow = Database['public']['Tables']['results']['Row']
 export type CaptureReadinessRow =
   Database['public']['Tables']['capture_session_readiness']['Row']
+export type ResultHistoryRow =
+  Database['public']['Functions']['list_result_history']['Returns'][number]
 
 export interface RoomAccess {
   roomId: string

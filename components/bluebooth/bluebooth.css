@@ -239,6 +239,29 @@
 .bb-modal-backdrop { position: fixed; z-index: 80; inset: 0; display: grid; place-items: center; padding: 20px; background: rgb(23 36 58 / 42%); }
 .bb-modal { width: min(520px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; border: 1px solid var(--bb-border); border-radius: 18px; background: #fff; padding: 20px; box-shadow: var(--bb-shadow-lg); }
 .bb-modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.bb-history { display: grid; gap: 16px; }
+.bb-history-note { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--bb-text-2); font-size: 13px; }
+.bb-history-note svg { width: 16px; height: 16px; flex: 0 0 auto; color: var(--bb-blue); }
+.bb-history-grid { display: grid; gap: 12px; }
+.bb-history-card { display: grid; grid-template-columns: 112px 1fr; gap: 12px; padding: 12px; border: 1px solid var(--bb-border); border-radius: 14px; background: var(--bb-bg); }
+.bb-history-card > img { width: 112px; height: 112px; grid-row: span 2; border-radius: 10px; background: #fff; object-fit: contain; }
+.bb-history-card-copy { display: grid; align-content: start; gap: 4px; min-width: 0; }
+.bb-history-card-copy strong, .bb-history-card-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bb-history-card-copy small { color: var(--bb-text-2); font-size: 12px; }
+.bb-history-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.bb-history-actions .bb-primary-button, .bb-history-actions .bb-secondary-button { min-height: 36px; padding: 7px 10px; }
+.bb-history-actions svg { width: 15px; height: 15px; }
+.bb-text-button.is-danger { color: #b42318; }
+.bb-history-error { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid #f4c7c3; border-radius: 12px; background: #fff4f2; color: #8f241b; font-size: 13px; }
+.bb-history-more { justify-self: center; }
+.bb-local-history { display: grid; gap: 12px; }
+.bb-local-history h3 { margin: 0; font-size: 15px; }
+
+@media (max-width: 520px) {
+  .bb-history-card { grid-template-columns: 84px 1fr; }
+  .bb-history-card > img { width: 84px; height: 84px; }
+  .bb-history-actions { grid-column: 1 / -1; }
+}
 .bb-toast-wrap { position: fixed; z-index: 100; right: 18px; bottom: 18px; display: grid; gap: 8px; }
 .bb-supabase-status { position: fixed; z-index: 40; bottom: 12px; left: 12px; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 24px); border: 1px solid var(--bb-border); border-radius: 999px; background: rgb(255 255 255 / 94%); color: var(--bb-text-2); padding: 6px 10px; box-shadow: var(--bb-shadow); font-size: 11px; }
 .bb-supabase-status.is-error { border-color: #f0b8b8; color: #8f2f2f; }
