@@ -18,8 +18,14 @@ export function CreateRoomScreen({ onStartCamera }: { onStartCamera: () => Promi
   const [code, setCode] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [onlineFailed, setOnlineFailed] = useState(false)
+  const [validationError, setValidationError] = useState('')
   const create = async (forceLocal = false) => {
-    if (!userName.trim()) return toast('Enter your name.', 'error')
+    if (submitting) return
+    if (!userName.trim()) {
+      setValidationError('Enter your name.')
+      return
+    }
+    setValidationError('')
     setSubmitting(true)
     setOnlineFailed(false)
     try {
@@ -50,22 +56,30 @@ export function CreateRoomScreen({ onStartCamera }: { onStartCamera: () => Promi
       <button className="bb-back-button" onClick={() => dispatch({ type: 'navigate', screen: 'home' })}><ArrowLeft /> Back</button>
       <section className="bb-form-card">
         {!code ? (
-          <>
+          <form
+            className="bb-form-contents"
+            aria-labelledby="create-room-heading"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void create()
+            }}
+          >
             <span className="bb-eyebrow">Create a room</span>
-            <h1>Start your photobooth</h1>
+            <h1 id="create-room-heading">Start your photobooth</h1>
             <p>Your partner can join with the room code.</p>
             <label className="bb-field">Room name<input value={roomName} maxLength={24} placeholder="Sunday shoot" onChange={(event) => setRoomName(event.target.value)} /></label>
-            <label className="bb-field">Your name<input value={userName} maxLength={20} placeholder="You" onChange={(event) => setUserName(event.target.value)} /></label>
+            <label className="bb-field">Your name<input value={userName} maxLength={20} placeholder="You" aria-invalid={Boolean(validationError)} aria-describedby={validationError ? 'create-name-error' : undefined} onChange={(event) => { setUserName(event.target.value); if (validationError) setValidationError('') }} /></label>
+            {validationError && <p className="bb-field-error" id="create-name-error">{validationError}</p>}
             <label className="bb-switch-row"><span>Turn on camera right away</span><input type="checkbox" checked={startCamera} onChange={(event) => setStartCamera(event.target.checked)} /></label>
-            <button className="bb-primary-button bb-full-button" disabled={submitting} onClick={() => void create()}>
+            <button type="submit" className="bb-primary-button bb-full-button" disabled={submitting}>
               {submitting ? 'Creating room…' : 'Create room'} <ArrowRight />
             </button>
             {onlineFailed && (
-              <button className="bb-secondary-button bb-full-button" disabled={submitting} onClick={() => void create(true)}>
+              <button type="button" className="bb-secondary-button bb-full-button" disabled={submitting} onClick={() => void create(true)}>
                 Continue with local room
               </button>
             )}
-          </>
+          </form>
         ) : (
           <>
             <span className="bb-eyebrow">Room created</span>

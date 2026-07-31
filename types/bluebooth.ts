@@ -94,14 +94,6 @@ export interface CameraSettings {
   filter: string
 }
 
-export interface SavedResult {
-  image: string
-  code: string
-  roomName: string
-  gridName: string
-  dimensions: readonly [number, number]
-  createdAt: string
-}
 
 export interface BlueboothState {
   screen: AppScreen

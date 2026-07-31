@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowRight, Camera, Grid2X2, Image, RotateCcw, Timer } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { CameraControls } from '@/components/bluebooth/editor/camera-controls'
 import { ConnectionStatus } from '@/components/bluebooth/camera/connection-status'
 import { CompositionPreview } from '@/components/bluebooth/editor/composition-preview'
@@ -47,6 +47,7 @@ export function SetupScreen({
   const { state, dispatch } = useBluebooth()
   const media = useLocalMedia()
   const room = useRoom()
+  const tabListRef = useRef<HTMLDivElement>(null)
   const setPresence = room.setPresence
   const connectedCount =
     room.mode === 'online' ? room.presence.length : state.participants.length
@@ -57,12 +58,48 @@ export function SetupScreen({
       cameraReady: cameraStatus === 'ready',
     })
   }, [cameraStatus, setPresence])
+
+  const moveSetupTab = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentIndex: number,
+  ) => {
+    let nextIndex: number | null = null
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      nextIndex = (currentIndex + 1) % steps.length
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      nextIndex = (currentIndex - 1 + steps.length) % steps.length
+    } else if (event.key === 'Home') {
+      nextIndex = 0
+    } else if (event.key === 'End') {
+      nextIndex = steps.length - 1
+    }
+    if (nextIndex === null) return
+    event.preventDefault()
+    dispatch({ type: 'set-setup-step', step: steps[nextIndex].id })
+    tabListRef.current
+      ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
+      [nextIndex]?.focus()
+  }
+
   return (
     <main className="bb-setup bb-screen">
       <div className="bb-setup-heading"><div><span className="bb-eyebrow">Booth setup</span><h1>Make it yours</h1></div><span className="bb-room-pill">{state.roomCode}</span></div>
-      <div className="bb-steps" role="tablist" aria-label="Setup steps">
+      <div ref={tabListRef} className="bb-steps" role="tablist" aria-label="Setup steps">
         {steps.map(({ id, label, icon: Icon }, index) => (
-          <button key={id} role="tab" aria-selected={state.setupStep === id} className={state.setupStep === id ? 'is-active' : ''} onClick={() => dispatch({ type: 'set-setup-step', step: id })}><Icon /><span>{index + 1}. {label}</span></button>
+          <button
+            key={id}
+            id={`setup-tab-${id}`}
+            role="tab"
+            aria-controls="setup-panel"
+            aria-selected={state.setupStep === id}
+            tabIndex={state.setupStep === id ? 0 : -1}
+            className={state.setupStep === id ? 'is-active' : ''}
+            onKeyDown={(event) => moveSetupTab(event, index)}
+            onClick={() => dispatch({ type: 'set-setup-step', step: id })}
+          >
+            <Icon />
+            <span>{index + 1}. {label}</span>
+          </button>
         ))}
       </div>
       <div className="bb-setup-layout">
@@ -76,14 +113,19 @@ export function SetupScreen({
                 compact
               />
             )}
-            <div className="bb-segmented" aria-label="Camera source mode">
-              {(['user', 'partner', 'split', 'alternate'] as const).map((mode) => <button disabled={!room.canControlBooth} key={mode} className={state.cameraMode === mode ? 'is-active' : ''} onClick={() => room.updateSharedSettings({ cameraMode: mode })}>{mode === 'user' ? 'You' : mode[0].toUpperCase() + mode.slice(1)}</button>)}
+            <div className="bb-segmented" role="group" aria-label="Camera source mode">
+              {(['user', 'partner', 'split', 'alternate'] as const).map((mode) => <button disabled={!room.canControlBooth} key={mode} aria-pressed={state.cameraMode === mode} className={state.cameraMode === mode ? 'is-active' : ''} onClick={() => room.updateSharedSettings({ cameraMode: mode })}>{mode === 'user' ? 'You' : mode[0].toUpperCase() + mode.slice(1)}</button>)}
             </div>
-            <button disabled={!room.canControlBooth} className="bb-icon-button" aria-label="Swap camera positions" onClick={() => room.updateSharedSettings({ swap: !state.swap })}><RotateCcw /></button>
+            <button disabled={!room.canControlBooth} className="bb-icon-button" aria-label="Swap camera positions" aria-pressed={state.swap} onClick={() => room.updateSharedSettings({ swap: !state.swap })}><RotateCcw /></button>
           </div>
           <CompositionPreview stream={stream} remoteStream={remoteStream} />
         </aside>
-        <section className="bb-editor-panel">
+        <section
+          id="setup-panel"
+          className="bb-editor-panel"
+          role="tabpanel"
+          aria-labelledby={`setup-tab-${state.setupStep}`}
+        >
           {!room.canControlBooth && (
             <div className="bb-ready-note">The host controls the booth setup.</div>
           )}

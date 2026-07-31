@@ -16,11 +16,15 @@ export function JoinRoomScreen({ onStartCamera }: { onStartCamera: () => Promise
   const [name, setName] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [onlineFailed, setOnlineFailed] = useState(false)
+  const [validationError, setValidationError] = useState('')
   const join = async (forceLocal = false) => {
+    if (submitting) return
     const normalized = normalizeRoomCode(code)
     if (!isValidRoomCode(normalized)) {
-      return toast('Enter a valid 6-character room code.', 'error')
+      setValidationError('Enter a valid 6-character room code.')
+      return
     }
+    setValidationError('')
     setSubmitting(true)
     setOnlineFailed(false)
     try {
@@ -45,21 +49,29 @@ export function JoinRoomScreen({ onStartCamera }: { onStartCamera: () => Promise
   return (
     <main className="bb-form-screen bb-screen">
       <button className="bb-back-button" onClick={() => dispatch({ type: 'navigate', screen: 'home' })}><ArrowLeft /> Back</button>
-      <section className="bb-form-card">
+      <form
+        className="bb-form-card"
+        aria-labelledby="join-room-heading"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void join()
+        }}
+      >
         <span className="bb-eyebrow">Join a room</span>
-        <h1>Enter your room code</h1>
+        <h1 id="join-room-heading">Enter your room code</h1>
         <p>Ask your partner for the six-character code.</p>
-        <label className="bb-field">Room code<input className="bb-code-input" value={code} maxLength={6} autoComplete="off" placeholder="BLU482" onChange={(event) => setCode(event.target.value.toUpperCase())} /></label>
+        <label className="bb-field">Room code<input className="bb-code-input" value={code} maxLength={6} autoComplete="off" placeholder="BLU482" aria-invalid={Boolean(validationError)} aria-describedby={validationError ? 'join-code-error' : undefined} onChange={(event) => { setCode(event.target.value.toUpperCase()); if (validationError) setValidationError('') }} /></label>
+        {validationError && <p className="bb-field-error" id="join-code-error">{validationError}</p>}
         <label className="bb-field">Your name<input value={name} maxLength={20} placeholder="You" onChange={(event) => setName(event.target.value)} /></label>
-        <button className="bb-primary-button bb-full-button" disabled={submitting} onClick={() => void join()}>
+        <button type="submit" className="bb-primary-button bb-full-button" disabled={submitting}>
           {submitting ? 'Joining room…' : 'Join room'} <ArrowRight />
         </button>
         {onlineFailed && (
-          <button className="bb-secondary-button bb-full-button" disabled={submitting} onClick={() => void join(true)}>
+          <button type="button" className="bb-secondary-button bb-full-button" disabled={submitting} onClick={() => void join(true)}>
             Continue with local room
           </button>
         )}
-      </section>
+      </form>
     </main>
   )
 }

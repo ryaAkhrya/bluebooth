@@ -106,7 +106,7 @@ function SynchronizedSessionScreen({
             Your local camera is unavailable
           </div>
         )}
-        <div className="bb-countdown" aria-live="assertive">
+        <div className="bb-countdown" aria-hidden="true">
           <strong>
             {waitingForReady
               ? synchronizedCapture.bothReady
@@ -124,6 +124,18 @@ function SynchronizedSessionScreen({
             Photo {shotIndex + 1} of {total}
           </span>
         </div>
+        <p className="bb-sr-only" aria-live="polite" aria-atomic="true">
+          {waitingForReady
+            ? synchronizedCapture.bothReady
+              ? 'Both cameras ready.'
+              : 'Waiting for both cameras.'
+            : synchronizedCapture.countdown &&
+                synchronizedCapture.countdown > 0
+              ? `Photo ${shotIndex + 1} in ${synchronizedCapture.countdown} seconds.`
+              : synchronizedCapture.state.operation === 'uploading'
+                ? `Uploading photo ${shotIndex + 1}.`
+                : ''}
+        </p>
       </div>
 
       <div className="bb-capture-readiness" role="status">
@@ -146,7 +158,11 @@ function SynchronizedSessionScreen({
           const thumbnail =
             sources?.[currentRole] ?? sources?.host ?? sources?.partner
           return (
-            <div key={index} className={index === shotIndex ? 'is-current' : ''}>
+            <div
+              key={index}
+              className={index === shotIndex ? 'is-current' : ''}
+              aria-current={index === shotIndex ? 'step' : undefined}
+            >
               {thumbnail ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={thumbnail} alt={`Photo ${index + 1}`} />
@@ -314,7 +330,7 @@ function LocalSessionScreen({ stream }: { stream: MediaStream | null }) {
           }}
         />
         {!stream && <div className="bb-session-fallback">Camera unavailable · using Bluebooth fallback</div>}
-        <div className="bb-countdown" aria-live="assertive">
+        <div className="bb-countdown" aria-hidden="true">
           {captured ? (
             <strong>Captured</strong>
           ) : (
@@ -322,11 +338,24 @@ function LocalSessionScreen({ stream }: { stream: MediaStream | null }) {
           )}
           <span>Photo {session.shotIndex + 1} of {total}</span>
         </div>
+        <p className="bb-sr-only" aria-live="polite" aria-atomic="true">
+          {captured
+            ? `Photo ${session.shotIndex + 1} captured.`
+            : paused
+              ? `Capture paused on photo ${session.shotIndex + 1}.`
+              : session.countdown > 0
+                ? `Photo ${session.shotIndex + 1} in ${session.countdown} seconds.`
+                : ''}
+        </p>
         {flash && <div className="bb-flash" />}
       </div>
       <div className="bb-session-thumbs">
         {Array.from({ length: total }, (_, index) => (
-          <div key={index} className={index === session.shotIndex ? 'is-current' : ''}>
+          <div
+            key={index}
+            className={index === session.shotIndex ? 'is-current' : ''}
+            aria-current={index === session.shotIndex ? 'step' : undefined}
+          >
             {captures[index] ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={captures[index]?.url} alt={`Photo ${index + 1}`} />

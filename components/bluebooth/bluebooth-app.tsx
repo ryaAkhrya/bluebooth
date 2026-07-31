@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { AppHeader } from '@/components/bluebooth/app-header'
 import { BlueboothProvider, useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
 import { LocalMediaProvider, useLocalMedia } from '@/components/bluebooth/state/local-media'
@@ -64,6 +65,16 @@ function BlueboothAppContent() {
     cameraStatus: camera.status,
     localStream: camera.stream,
   })
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const heading = document.querySelector<HTMLElement>('.bb-screen h1')
+      if (!heading) return
+      heading.tabIndex = -1
+      heading.focus({ preventScroll: true })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [state.screen])
   const leave = async () => {
     peer.close()
     camera.stop()

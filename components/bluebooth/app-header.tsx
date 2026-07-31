@@ -8,10 +8,10 @@ export function AppHeader({ onLeave, onCamera }: { onLeave: () => void; onCamera
   const inRoom = ['waiting', 'setup', 'session', 'review', 'final'].includes(state.screen)
   return (
     <header className="bb-header">
-      <button className="bb-logo" onClick={() => !inRoom && undefined} aria-label="Bluebooth home">
+      <div className="bb-logo">
         <span className="bb-logo-mark" aria-hidden="true"><span /></span>
         <strong>Bluebooth</strong>
-      </button>
+      </div>
       {inRoom && (
         <div className="bb-header-actions">
           <span className="bb-room-pill">{state.roomCode}</span>

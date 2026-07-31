@@ -17,6 +17,18 @@ const categories: Array<{ id: GridCategory | 'all'; label: string }> = [
   { id: 'print', label: 'Print' },
 ]
 
+const thumbnailFrame = getFramePreset('clean-white')
+const thumbnailGeometry = new Map(
+  GRID_PRESETS.map((preset) => [
+    preset.id,
+    getCompositionGeometry({
+      preset,
+      frame: thumbnailFrame,
+      layout: { gap: 4, padding: 0, radius: 4, background: '#ffffff' },
+    }),
+  ]),
+)
+
 export function GridSelector() {
   const { state } = useBluebooth()
   const media = useLocalMedia()
@@ -27,10 +39,11 @@ export function GridSelector() {
     : GRID_PRESETS.filter((preset) => preset.category === category)
   return (
     <>
-      <div className="bb-chips" aria-label="Grid categories">
+      <div className="bb-chips" role="group" aria-label="Grid categories">
         {categories.map((item) => (
           <button
             key={item.id}
+            aria-pressed={category === item.id}
             className={category === item.id ? 'is-active' : ''}
             onClick={() => setCategory(item.id)}
           >
@@ -62,12 +75,8 @@ export function GridSelector() {
 }
 
 function GridThumbnail({ preset }: { preset: (typeof GRID_PRESETS)[number] }) {
-  const frame = getFramePreset('clean-white')
-  const geometry = getCompositionGeometry({
-    preset,
-    frame,
-    layout: { gap: 4, padding: 0, radius: 4, background: '#ffffff' },
-  })
+  const geometry = thumbnailGeometry.get(preset.id)
+  if (!geometry) return null
   return (
     <span
       className="bb-grid-thumb"
