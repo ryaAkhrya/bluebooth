@@ -5,12 +5,13 @@ import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
 
 export function AppHeader({ onLeave, onCamera }: { onLeave: () => void; onCamera: () => void }) {
   const { state } = useBluebooth()
+  if (state.screen === 'home') return null
   const inRoom = ['waiting', 'setup', 'session', 'review', 'final'].includes(state.screen)
   return (
     <header className="bb-header">
       <div className="bb-logo">
         <span className="bb-logo-mark" aria-hidden="true"><span /></span>
-        <strong>Bluebooth</strong>
+        <span className="bb-logo-copy"><strong>LDRoll</strong><small>studio</small></span>
       </div>
       {inRoom && (
         <div className="bb-header-actions">

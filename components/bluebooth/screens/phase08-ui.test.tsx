@@ -90,7 +90,7 @@ describe('Phase 08 accessible UI', () => {
 
     expect(screen.queryByText(/result history/i)).toBeNull()
     expect(screen.getByRole('button', { name: /create a room/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /join with a code/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /join with code/i })).toBeTruthy()
   })
 
   it('guards create-room Enter submission with a persistent field error', async () => {

@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { CameraVideo } from '@/components/bluebooth/camera/camera-video'
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
 import { useLocalMedia } from '@/components/bluebooth/state/local-media'
@@ -63,13 +64,16 @@ export function CompositionPreview({
   const activeCustomFrameSource =
     customFrameResource?.source ??
     (suppressLocalCustomFrame ? null : media.customFrame?.url ?? null)
-  const geometry = getCompositionGeometry({
-    preset: grid,
-    frame,
-    layout,
-    showDate: frameOptions.showDate,
-    showRoom: frameOptions.showRoom,
-  })
+  const geometry = useMemo(
+    () => getCompositionGeometry({
+      preset: grid,
+      frame,
+      layout,
+      showDate: frameOptions.showDate,
+      showRoom: frameOptions.showRoom,
+    }),
+    [frame, frameOptions.showDate, frameOptions.showRoom, grid, layout],
+  )
   const filter = cameraFilterCss(cameraSettings)
   const transform = cameraTransform(cameraSettings)
   const localRole = room.onlineRoom?.membership.role ?? 'host'

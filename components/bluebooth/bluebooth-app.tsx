@@ -4,6 +4,10 @@ import { useEffect } from 'react'
 import { AppHeader } from '@/components/bluebooth/app-header'
 import { BlueboothProvider, useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
 import { LocalMediaProvider, useLocalMedia } from '@/components/bluebooth/state/local-media'
+import {
+  CreativeWorkflowProvider,
+  useCreativePlan,
+} from '@/components/bluebooth/creative/creative-workflow'
 import { RoomProvider, useRoom } from '@/components/bluebooth/state/room-state'
 import {
   SupabaseAuthNotice,
@@ -21,6 +25,8 @@ import { WaitingRoomScreen } from '@/components/bluebooth/screens/waiting-room-s
 import { useCamera } from '@/hooks/use-camera'
 import { useWebRtcPeer } from '@/hooks/use-webrtc-peer'
 import { useSynchronizedCapture } from '@/hooks/use-synchronized-capture'
+import { getSlotIds } from '@/lib/bluebooth/geometry'
+import { getGridPreset } from '@/lib/bluebooth/presets/grids'
 import './bluebooth.css'
 
 export function BlueboothApp({ initialJoinCode }: { initialJoinCode?: string }) {
@@ -29,9 +35,11 @@ export function BlueboothApp({ initialJoinCode }: { initialJoinCode?: string }) 
       <BlueboothProvider initialJoinCode={initialJoinCode}>
         <RoomProvider initialJoinCode={initialJoinCode}>
           <LocalMediaProvider>
-            <ToastProvider>
-              <BlueboothAppContent />
-            </ToastProvider>
+            <CreativeWorkflowProvider>
+              <ToastProvider>
+                <BlueboothAppContent />
+              </ToastProvider>
+            </CreativeWorkflowProvider>
           </LocalMediaProvider>
         </RoomProvider>
       </BlueboothProvider>
@@ -44,6 +52,7 @@ function BlueboothAppContent() {
   const camera = useCamera()
   const media = useLocalMedia()
   const room = useRoom()
+  const creative = useCreativePlan()
   const toast = useToast()
   const currentMember = room.onlineRoom?.membership ?? null
   const peerMember =
@@ -64,6 +73,11 @@ function BlueboothAppContent() {
   const synchronizedCapture = useSynchronizedCapture({
     cameraStatus: camera.status,
     localStream: camera.stream,
+    shotCount: creative.resolveShotCount(
+      getSlotIds(getGridPreset(state.selectedGrid)).length,
+    ),
+    captureMode: creative.mode,
+    captureTarget: creative.target,
   })
 
   useEffect(() => {

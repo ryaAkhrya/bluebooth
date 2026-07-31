@@ -176,6 +176,19 @@ export function parseFrozenCaptureConfiguration(
       typeof value.customFrameStoragePath === 'string'
         ? value.customFrameStoragePath
         : null,
+    creativeMode:
+      value.creativeMode === 'creative' || value.creativeMode === 'quick'
+        ? value.creativeMode
+        : fallback.creativeMode ?? 'quick',
+    creativeTarget:
+      value.creativeTarget === 'unlimited' ||
+      value.creativeTarget === 4 ||
+      value.creativeTarget === 6 ||
+      value.creativeTarget === 8 ||
+      value.creativeTarget === 10 ||
+      value.creativeTarget === 12
+        ? value.creativeTarget
+        : fallback.creativeTarget ?? 8,
     frameOptions: {
       caption:
         typeof frameOptions.caption === 'string'

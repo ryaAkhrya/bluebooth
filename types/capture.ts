@@ -6,6 +6,9 @@ import type {
   LayoutSettings,
 } from '@/types/bluebooth'
 
+export type CaptureMode = 'quick' | 'creative'
+export type CreativeCaptureTarget = 4 | 6 | 8 | 10 | 12 | 'unlimited'
+
 export type CaptureSessionStatus =
   | 'preparing'
   | 'waiting-for-ready'
@@ -29,6 +32,8 @@ export interface FrozenCaptureConfiguration {
   shotDelay: number
   customFrame: CustomFrame | null
   customFrameStoragePath: string | null
+  creativeMode?: CaptureMode
+  creativeTarget?: CreativeCaptureTarget
 }
 
 interface CaptureEventEnvelope {

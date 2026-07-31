@@ -16,8 +16,6 @@ import {
   shouldPollCaptureReadinessTransition,
 } from '@/lib/bluebooth/capture-readiness'
 import { captureVideoFrame } from '@/lib/bluebooth/media'
-import { getSlotIds } from '@/lib/bluebooth/geometry'
-import { getGridPreset } from '@/lib/bluebooth/presets/grids'
 import { withBoundedRetry } from '@/lib/bluebooth/retry'
 import {
   initialSynchronizedSessionState,
@@ -47,7 +45,9 @@ import {
 } from '@/lib/supabase/storage'
 import type { CameraStatus } from '@/types/bluebooth'
 import type {
+  CaptureMode,
   CaptureEvent,
+  CreativeCaptureTarget,
   FrozenCaptureConfiguration,
   SharedCaptureUrls,
 } from '@/types/capture'
@@ -67,6 +67,9 @@ function captureReadinessDiagnostic(
 export function useSynchronizedCapture(input: {
   cameraStatus: CameraStatus
   localStream: MediaStream | null
+  shotCount: number
+  captureMode: CaptureMode
+  captureTarget: CreativeCaptureTarget
 }) {
   const { state: bluebooth, dispatch: dispatchBluebooth } = useBluebooth()
   const media = useLocalMedia()
@@ -336,8 +339,12 @@ export function useSynchronizedCapture(input: {
     if (!client || !onlineRoom || !isHost) return false
     dispatch({ type: 'operation', operation: 'preparing' })
     try {
-      const frozen = selectFrozenCaptureConfiguration(bluebooth)
-      const shotCount = getSlotIds(getGridPreset(frozen.selectedGrid)).length
+      const frozen: FrozenCaptureConfiguration = {
+        ...selectFrozenCaptureConfiguration(bluebooth),
+        creativeMode: input.captureMode,
+        creativeTarget: input.captureTarget,
+      }
+      const shotCount = Math.min(64, Math.max(1, Math.round(input.shotCount)))
       let session = await createPhotoboothSession(client, {
         roomId: onlineRoom.room.id,
         configuration: frozen as unknown as Json,
@@ -393,6 +400,9 @@ export function useSynchronizedCapture(input: {
     client,
     eventBase,
     hydrate,
+    input.shotCount,
+    input.captureMode,
+    input.captureTarget,
     isHost,
     media,
     membership,

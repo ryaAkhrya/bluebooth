@@ -4,6 +4,7 @@ import { Download, Save } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useBluebooth } from '@/components/bluebooth/state/bluebooth-state'
 import { useLocalMedia } from '@/components/bluebooth/state/local-media'
+import { useCreativeStudio } from '@/components/bluebooth/creative/creative-workflow'
 import { useToast } from '@/components/bluebooth/ui/toast-provider'
 import { renderComposition } from '@/lib/bluebooth/canvas-renderer'
 import { getGridPreset } from '@/lib/bluebooth/presets/grids'
@@ -13,6 +14,8 @@ import { useLocalResult } from '@/hooks/use-local-result'
 import type { SynchronizedCaptureController } from '@/hooks/use-synchronized-capture'
 import { resolveCapturedSlotImages } from '@/lib/bluebooth/capture-events'
 import { releaseFinalRenderKey } from '@/lib/bluebooth/final-result'
+import { assetShotIndex } from '@/lib/bluebooth/creative-studio'
+import { getSlotIds } from '@/lib/bluebooth/geometry'
 
 export function FinalScreen({
   synchronizedCapture,
@@ -32,6 +35,7 @@ function SynchronizedFinalScreen({
 }) {
   const { state } = useBluebooth()
   const media = useLocalMedia()
+  const creative = useCreativeStudio()
   const toast = useToast()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const renderingKeyRef = useRef<string | null>(null)
@@ -45,7 +49,7 @@ function SynchronizedFinalScreen({
   const total = session?.shot_count ?? 0
   const grid = getGridPreset(configuration?.selectedGrid ?? state.selectedGrid)
   const frame = getFramePreset(configuration?.selectedFrame ?? state.selectedFrame)
-  const slotImages = useMemo(
+  const capturedAssets = useMemo(
     () =>
       configuration
         ? resolveCapturedSlotImages(
@@ -55,6 +59,18 @@ function SynchronizedFinalScreen({
           )
         : [],
     [configuration, synchronizedCapture.sharedCaptureUrls, total],
+  )
+  const slotCount = getSlotIds(grid).length
+  const studioDraft = creative.draft?.key === session?.id ? creative.draft : null
+  const slotImages = useMemo(
+    () =>
+      studioDraft
+        ? studioDraft.assignments.slice(0, slotCount).map((assetId) => {
+            const shotIndex = assetId ? assetShotIndex(assetId) : null
+            return shotIndex === null ? null : capturedAssets[shotIndex] ?? null
+          })
+        : capturedAssets.slice(0, slotCount),
+    [capturedAssets, slotCount, studioDraft],
   )
 
   useEffect(() => {
@@ -145,7 +161,7 @@ function SynchronizedFinalScreen({
     <main className="bb-final bb-screen">
       <header className="bb-centered-heading">
         <span className="bb-eyebrow">Shared final result</span>
-        <h1>Your Bluebooth photo</h1>
+        <h1>Your LDRoll photo</h1>
         <p>
           {grid.name} · {grid.output.join('×')} px
         </p>
@@ -203,6 +219,7 @@ function SynchronizedFinalScreen({
 
 function LocalFinalScreen() {
   const { state, dispatch } = useBluebooth()
+  const creative = useCreativeStudio()
   const toast = useToast()
   const {
     captures,
@@ -217,6 +234,19 @@ function LocalFinalScreen() {
   const { save } = useLocalResult()
   const grid = getGridPreset(state.selectedGrid)
   const frame = getFramePreset(state.selectedFrame)
+  const slotCount = getSlotIds(grid).length
+  const studioKey = `local:${state.roomCode}:${state.selectedGrid}:${captures.filter(Boolean).length}`
+  const studioDraft = creative.draft?.key === studioKey ? creative.draft : null
+  const slotImages = useMemo(
+    () =>
+      studioDraft
+        ? studioDraft.assignments.slice(0, slotCount).map((assetId) => {
+            const shotIndex = assetId ? assetShotIndex(assetId) : null
+            return shotIndex === null ? null : captures[shotIndex]?.url ?? null
+          })
+        : captures.slice(0, slotCount).map((capture) => capture?.url ?? null),
+    [captures, slotCount, studioDraft],
+  )
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -231,7 +261,7 @@ function LocalFinalScreen() {
         state.customFrame && customFrameResource
           ? { ...state.customFrame, source: customFrameResource.url }
           : null,
-      slotImages: captures.map((capture) => capture?.url ?? null),
+      slotImages,
       roomCode: state.roomCode,
       roomName: state.roomName,
     }).then((blob) => {
@@ -252,6 +282,7 @@ function LocalFinalScreen() {
     state.roomName,
     setFinalResult,
     toast,
+    slotImages,
   ])
 
   const download = () => {
@@ -281,7 +312,7 @@ function LocalFinalScreen() {
   }
   return (
     <main className="bb-final bb-screen">
-      <header className="bb-centered-heading"><span className="bb-eyebrow">Final result</span><h1>Your Bluebooth photo</h1><p>{grid.name} · {grid.output.join('×')} px</p></header>
+      <header className="bb-centered-heading"><span className="bb-eyebrow">Final result</span><h1>Your LDRoll photo</h1><p>{grid.name} · {grid.output.join('×')} px</p></header>
       <div className="bb-final-canvas"><canvas ref={canvasRef} aria-label="Final composed photobooth image" /></div>
       <div className="bb-final-actions">
         <button className="bb-primary-button" disabled={!ready} onClick={download}><Download /> Download PNG</button>

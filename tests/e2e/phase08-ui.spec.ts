@@ -14,7 +14,7 @@ test.describe('Phase 08 presentation', () => {
 
       await expect(
         page.getByRole('heading', {
-          name: 'A photobooth for two, wherever you are.',
+          name: /LDRoll A photobooth for people who aren't in the same place/i,
         }),
       ).toBeVisible()
       await expect(

@@ -3,6 +3,7 @@
 import { ArrowRight, Camera, Grid2X2, Image, RotateCcw, Timer } from 'lucide-react'
 import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { CameraControls } from '@/components/bluebooth/editor/camera-controls'
+import { CaptureModeControls } from '@/components/bluebooth/editor/capture-mode-controls'
 import { ConnectionStatus } from '@/components/bluebooth/camera/connection-status'
 import { CompositionPreview } from '@/components/bluebooth/editor/composition-preview'
 import { FrameSelector } from '@/components/bluebooth/editor/frame-selector'
@@ -20,7 +21,7 @@ const steps: Array<{ id: SetupStep; label: string; icon: typeof Grid2X2 }> = [
   { id: 'layout', label: 'Layout', icon: Grid2X2 },
   { id: 'frame', label: 'Frame', icon: Image },
   { id: 'camera', label: 'Camera', icon: Camera },
-  { id: 'timer', label: 'Timer', icon: Timer },
+  { id: 'timer', label: 'Capture', icon: Timer },
 ]
 
 export function SetupScreen({
@@ -129,10 +130,10 @@ export function SetupScreen({
           {!room.canControlBooth && (
             <div className="bb-ready-note">The host controls the booth setup.</div>
           )}
-          {state.setupStep === 'layout' && <><header><h2>Choose a grid</h2><p>Pick a format, then adjust its spacing.</p></header><GridSelector /><div className="bb-control-card"><LayoutControls /></div></>}
-          {state.setupStep === 'frame' && <><header><h2>Choose a frame</h2><p>Use a built-in style or upload your own.</p></header><FrameSelector /></>}
+          {state.setupStep === 'layout' && <><header><h2>Choose a template</h2><p>Start with a format. You will fill its slots in the studio.</p></header><GridSelector /><div className="bb-control-card"><LayoutControls /></div></>}
+          {state.setupStep === 'frame' && <><header><h2>Style the frame</h2><p>Choose the finish that holds your memories together.</p></header><FrameSelector /></>}
           {state.setupStep === 'camera' && <><header><h2>Camera settings</h2><p>Adjust your local camera preview.</p></header><CameraControls status={cameraStatus} devices={devices} deviceId={deviceId} onRequest={onRequestCamera} /></>}
-          {state.setupStep === 'timer' && <><header><h2>Session timing</h2><p>Choose a countdown and pace.</p></header><TimerControls /></>}
+          {state.setupStep === 'timer' && <><header><h2>Plan the roll</h2><p>Choose your creative freedom, countdown, and pace.</p></header><CaptureModeControls /><TimerControls /></>}
         </section>
       </div>
       <div className="bb-bottom-bar">

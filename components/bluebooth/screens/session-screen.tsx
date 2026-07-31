@@ -14,6 +14,7 @@ import {
 } from '@/lib/bluebooth/session-machine'
 import type { SynchronizedCaptureController } from '@/hooks/use-synchronized-capture'
 import { useRoom } from '@/components/bluebooth/state/room-state'
+import { useCreativePlan } from '@/components/bluebooth/creative/creative-workflow'
 
 export function SessionScreen({
   stream,
@@ -222,13 +223,15 @@ function SynchronizedSessionScreen({
 
 function LocalSessionScreen({ stream }: { stream: MediaStream | null }) {
   const { state, dispatch } = useBluebooth()
+  const creative = useCreativePlan()
   const { captures, setCapture } = useLocalMedia()
   const toast = useToast()
   const videoRef = useRef<HTMLVideoElement>(null)
   const [session, dispatchSession] = useReducer(localSessionReducer, initialLocalSessionState)
   const [flash, setFlash] = useState(false)
   const grid = getGridPreset(state.selectedGrid)
-  const total = getSlotIds(grid).length
+  const templateSlots = getSlotIds(grid).length
+  const total = creative.resolveShotCount(templateSlots)
 
   useEffect(() => {
     const video = videoRef.current
@@ -329,7 +332,7 @@ function LocalSessionScreen({ stream }: { stream: MediaStream | null }) {
             objectFit: state.cameraSettings.fit,
           }}
         />
-        {!stream && <div className="bb-session-fallback">Camera unavailable · using Bluebooth fallback</div>}
+        {!stream && <div className="bb-session-fallback">Camera unavailable · using LDRoll fallback</div>}
         <div className="bb-countdown" aria-hidden="true">
           {captured ? (
             <strong>Captured</strong>
